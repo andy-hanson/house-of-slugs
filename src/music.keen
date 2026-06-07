@@ -1,0 +1,77 @@
+import
+	keen/io/duration
+	./credit
+
+music-id enum
+	basement
+	bathroom
+	bathroom-shower
+	bedroom
+	chase
+	credits
+	foyer
+	garden
+	kitchen
+	puzzle
+
+music-path string(a music-id)
+	"music/{to::symbol a}.ogg"
+
+music-fade-in-time duration(a music-id)
+	match a
+	as bedroom or puzzle
+		2.seconds
+	else
+		()
+
+music-fade-out-time duration()
+	2.seconds
+
+swap-music-fade duration()
+	4.seconds
+
+music-volume float32(a music-id)
+	match a
+	as puzzle
+		1/5
+	else
+		1/3
+
+music-authors string set()
+	all-authors map members::music-id[], it.credit
+credit credit(a music-id)
+	match a
+	as basement
+		url: "opengameart.org/content/another-space-background-track"
+		authors: "yd",
+	as bathroom or bathroom-shower
+		lonely-echoes
+	as bedroom
+		url: "https://opengameart.org/content/strange-moon"
+		authors: "Tsorthan Grove",
+	as chase
+		andy
+	as credits
+		andy
+	as foyer
+		drazorleaf
+	as garden
+		drazorleaf
+	as kitchen
+		url: "opengameart.org/content/ocean-theme"
+		authors: "Wolfgang_",
+	as puzzle
+		url: "opengameart.org/content/realm-of-fantasy"
+		authors: "Eric Matyas",
+
+-andy credit()
+	url: "keen.foo"
+	authors: "Andy Hanson",
+
+-drazorleaf credit()
+	url: "buymeacoffee.com/drazorleaf"
+	authors: "David Karsten",
+
+-lonely-echoes credit()
+	url: "https://opengameart.org/content/lonely-echoes"
+	authors: "Tsorthan Grove",

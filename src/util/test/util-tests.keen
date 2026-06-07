@@ -1,0 +1,25 @@
+import
+	../util
+
+test
+	find-duplicate (1, 2, 1)::nat[] is 1
+	find-duplicate (1, 2, 3)::nat[] is ()
+
+test
+	int = parabolic-interpolator 0, 1, 0.5, 0
+	int is -4, 4, 0
+	int[0] is 0
+	int[0.25] is 0.75
+	int[0.5] is 1
+	int[0.75] is 0.75
+	int[1] is 0
+
+test
+	range float32 range = 4 .. 10
+	max-turns nat8 = 4
+	increase-over-time range, 5, max-turns is 4
+	increase-over-time range, 4, max-turns is 4
+	increase-over-time range, 3, max-turns is 6
+	increase-over-time range, 2, max-turns is 8
+	increase-over-time range, 1, max-turns is 10
+	increase-over-time range, 0, max-turns is 10

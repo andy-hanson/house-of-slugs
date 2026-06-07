@@ -1,0 +1,102 @@
+import
+	grid/geometry
+	grid/grid-set
+	grid/sparse-grid
+	keen/io/duration
+	keen/math/geom2d/aa-rect
+	keen/math/geom2d/size2
+	keen/math/vec
+	./game-types
+	./game-util
+
+animation-and-time record
+	anim animation-info
+	| Time since the game started
+	now duration
+	| Time since the last game state update
+	dt duration
+thrown thrown-info?(a animation-and-time) = a.anim.thrown
+
+animation-info record
+	last-time duration
+	last-tiles-to-draw aa-rect32
+	last-smoke smoke sparse-grid
+	thrown thrown-info?
+	prev-tiles-visible grid-set?
+	step step-animation-info
+	prev-for-fade-to-black game?
+new animation-info(tiles-to-draw aa-rect32, now duration)
+	last-time: now
+	last-tiles-to-draw: tiles-to-draw
+	last-smoke: ()
+	thrown: ()
+	prev-tiles-visible: ()
+	step: ()
+	prev-for-fade-to-black: ()
+moved-harley grid-pos?(a animation-info) = a.step.moved-harley
+moved-player grid-pos?(a animation-info) = a.step.moved-player
+slugs slug-animation-info[slug-id](a animation-info) = a.step.slugs
+things thing-to-animate[](a animation-info) = a.step.things
+
+| This is *not* called on every frame!
+| It is called when there is a logical update to the game.
+game-step animation-info
+	a animation-info
+	prev-game game
+	step step-animation-info
+	now duration
+	aspect-ratio size2-32
+do
+	last-time: now
+	last-tiles-to-draw: if step.changed-area
+		tiles-to-draw prev-game, aspect-ratio
+	else
+		interpolated-tiles-to-draw a, (now - a.last-time), tiles-to-draw prev-game, aspect-ratio
+	last-smoke: prev-game.smoke
+	thrown: step.thrown
+	prev-tiles-visible: all-tiles-visible-to-player prev-game
+	step: step
+	prev-for-fade-to-black: if step.changed-area then (step.override-prev-game else prev-game)
+
+interpolated-tiles-to-draw aa-rect32(anim animation-and-time, prev-tiles-to-draw aa-rect32)
+	interpolated-tiles-to-draw anim.anim, anim.dt, prev-tiles-to-draw
+interpolated-tiles-to-draw aa-rect32(anim animation-info, dt duration, prev-tiles-to-draw aa-rect32)
+	if anim.prev-for-fade-to-black
+		prev-tiles-to-draw
+	else
+		fraction float = min 1, dt / 0.5.seconds
+		lerp anim.last-tiles-to-draw, prev-tiles-to-draw, fraction.to
+
+| Round positions so that tiles will begin and end on exact pixels
+round-tiles-to-draw aa-rect32(screen size2-32, original aa-rect32)
+	left, right = round-range screen.width, original.left, original.right
+	bottom, top = round-range screen.height, original.bottom, original.top
+	left: left, right: right, bottom: bottom, top: top
+-round-range (float32, float32)(screen-size float32, tile0 float32, tile1 float32)
+	original-world-width = tile1 - tile0
+	original-tile-size-pixels = screen-size / original-world-width
+	new-tile-size-pixels = round original-tile-size-pixels
+	new-world-width = screen-size / new-tile-size-pixels
+	assert is-close new-world-width, original-world-width
+
+	original-first-tile = round-down tile0
+	original-leftmost-pixel = (original-first-tile - tile0) * screen-size / original-world-width
+	new-leftmost-pixel = round original-leftmost-pixel
+	# (original-first-tile - new-tx0) * size / new-world-width = new-leftmost-pixel, so:
+	new-tile0 = original-first-tile - new-leftmost-pixel * new-world-width / screen-size
+	assert is-close new-tile0, tile0
+	new-tile1 = new-tile0 + new-world-width
+	assert is-close new-tile1, tile1
+	new-tile0, new-tile1
+-is-close bool(a float32, b float32)
+	(abs a - b) <= 0.5
+
+shower-to-draw aa-rect32[](screen aa-rect32, now duration)
+	anim-time duration = 5.seconds
+	fraction float32 = to (now % anim-time) / anim-time
+	x1 = -screen.width * (1 - fraction)
+	y1 = -screen.height * fraction
+	x2 = screen.width + x1
+	y2 = screen.height + y1
+	for x, y in all-combinations (x1, x2)::float32[], (y1, y2)::float32[]
+		screen + (x, y)

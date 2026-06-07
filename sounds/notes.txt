@@ -1,0 +1,5 @@
+Credits in ../src/sounds.keen
+
+To convert:
+	To wav: ffmpeg -i foo.mp3 foo.wav
+	To 16 bit: ffmpeg -i foo.wav -sample_fmt s16 foo2.wav && mv foo2.wav foo.wav

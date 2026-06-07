@@ -1,0 +1,9 @@
+import
+	keen/col/counter
+	../game-types
+	../game-util
+
+test
+	count slug-id counter = for* _, slugs in slugs-for-each-area then slugs.all
+	for slug in members::slug-id[]
+		count[slug] is 1 else error "Slug {slug} appears {count[slug]} times"

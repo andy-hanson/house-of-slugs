@@ -1,0 +1,18 @@
+import
+	keen/math/geom2d/aa-rect
+	keen/math/geom2d/size2
+	keen/math/vec
+
+screen-region-to-render aa-rect32(screen-size size2-32)
+	max-ratio float32 = 2
+	max-width = screen-size.height * max-ratio
+	max-height = screen-size.width * max-ratio
+	if screen-size.width > max-width
+		bottom-left: (screen-size.width - max-width) / 2, 0
+		size: max-width, screen-size.height
+	elif screen-size.height > max-height
+		bottom-left: 0, (screen-size.height - max-height) / 2
+		size: screen-size.width, max-height
+	else
+		bottom-left: 0, 0
+		size: screen-size

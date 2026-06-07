@@ -1,0 +1,102 @@
+import
+	grid/geometry
+	grid/grid-set
+	keen/col/enum-map
+	keen/io/file
+	keen/parse
+	keen/parallel
+	keen/random/random
+	keen/random/sfc
+	keen/random/util
+	../areas
+	../area-setup-types
+	../game-types
+	../util/perf
+	./make-puzzle
+	./puzzle-solver
+
+main void() global
+	enable-perf
+	ensure-directory "bin"
+	for difficulty, puzzles in make-generated-puzzles
+		write-file "bin/puzzles-{to::symbol difficulty}", to-kid puzzles
+
+puzzle-getter record mut
+	-random random
+	-puzzles generated-puzzles-for-area
+puzzle-getter puzzle-getter(seed nat64, area area, puzzles string)
+	random: sfc32 seed
+	puzzles: (to::generated-puzzles parse kid, puzzles)[area]!
+subscript blocks-puzzle(a puzzle-getter, placement site-placement)
+	the random = a.random
+	a.puzzles[placement]!.random.puzzle
+
+generated-puzzles alias
+	make-puzzle-result[][site-placement][area]
+generated-puzzles-for-area alias
+	make-puzzle-result[][site-placement]
+
+-make-generated-puzzles (difficulty, generated-puzzles) enum-map()
+	all generated-puzzles = for area, config in area-configs
+		do with in measure-performance "puzzles for {area}"
+		area, map-optionally config.layout.sites, of site
+			match site.kind
+			as area
+				()
+			as babeki
+				()
+			as puzzle-layout
+				puzzles = puzzles-for-layout site.kind
+				# Note: You can't compare puzzles with different features by step count.
+				# Barebones puzzles with no features tend to be the hardest.
+				# Pillows inflate the step count but the puzzles tend to be easier.
+				log "{area} {site.placement}: {puzzles[0].steps} to {puzzles[end - 1].steps} steps"
+				site.placement, puzzles
+	make of difficulty
+		for area, placement-and-puzzles in all
+			area, for placement, puzzles in placement-and-puzzles
+				puzzles.size is n-to-keep
+				assert is-multiple-of puzzles.size, members::difficulty[].size
+				n-per-difficulty = puzzles.size / members::difficulty[].size
+				d = to::nat difficulty
+				placement, puzzles[d * n-per-difficulty .. (d + 1) * n-per-difficulty].to
+
+-puzzles-for-layout make-puzzle-result[](layout puzzle-layout)
+	discard-easy = discard-easy layout
+	results make-puzzle-result set = for i in parallel 0 .. discard-easy + n-to-keep + discard-hard
+		make-random-puzzle i, layout
+	sorted make-puzzle-result[] = sort results.to::make-puzzle-result[], it.steps
+	# The generated puzzles may not all be unique, but should be at least this many
+	assert sorted.size >= n-to-keep + discard-hard
+	sorted[end - discard-hard - n-to-keep .. end - discard-hard].to
+
+# Discard the very easiest tests, which typically just have you walking straight to the goal
+-discard-easy nat(layout puzzle-layout)
+	if layout.features[pillows]
+		64
+	elif layout.features[lit-blocks]
+		32
+	else
+		16
+-n-to-keep nat() = 36
+# Discard the 2 hardest puzzles which tend to be outliers
+-discard-hard nat() = 2
+
+-make-random-puzzle make-puzzle-result(seed nat64, layout puzzle-layout)
+	features = layout.features
+	make-blocks-puzzle
+		seed: seed
+		options:
+			space: layout.puzzle-tiles
+			player-initial-position: only-where! layout.entrance.neighbors4, layout.puzzle-tiles[it]
+			goal: layout.goal
+			positions-near-valves: filter-that-neighbor layout.puzzle-tiles, layout.valves
+			tunnels: layout.features[tunnels]
+		add-fire-and-flood: if features[fire]
+			if features[flood] then mixed else fire-only
+		else
+			forbid features[flood]
+			none
+		add-pillows: features[pillows]
+		add-tunnels: features[tunnels]
+		blocks-may-be-lit: features[lit-blocks]

@@ -1,0 +1,11 @@
+import
+	keen/math/geom2d/aa-rect
+	keen/math/geom2d/size2
+	keen/math/vec
+	../screen-positions
+
+test
+	screen-region-to-render (500, 400) is bottom-left: (0, 0), top-right: (500, 400)
+	screen-region-to-render (900, 400) is bottom-left: (50, 0), top-right: (850, 400)
+	screen-region-to-render (400, 500) is bottom-left: (0, 0), top-right: (400, 500)
+	screen-region-to-render (400, 900) is bottom-left: (0, 50), top-right: (400, 850)

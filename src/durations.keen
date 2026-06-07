@@ -1,0 +1,22 @@
+import
+	keen/io/duration
+
+fade-to-black-time duration()
+	seconds 2
+fade-in-time duration()
+	seconds 1
+
+visibility-transition-time duration()
+	seconds 1/2
+
+smoke-transition-time duration()
+	seconds 1/2
+
+slime-transition-time duration()
+	seconds 1/2
+
+player-move-duration duration()
+	seconds 1/4
+
+slug-move-duration duration()
+	seconds 1/3
