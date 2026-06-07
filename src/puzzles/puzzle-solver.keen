@@ -1,0 +1,502 @@
+import
+	grid/geometry
+	grid/grid-entities
+	grid/grid-indices
+	grid/grid-set
+	grid/grid-set-set
+	puzzle-solver/solver
+	keen/bits
+	keen/unsafe
+	../util/more-grid-utils
+	../util/util
+	../game/game-types
+
+block-puzzle-options record
+	space grid-set
+	player-initial-position grid-pos
+	goal puzzle-goal
+	| Space where blocks can't be pushed and player can't walk. Basically, anything that's not the ground.
+	| Player can use a valve when standing next to it. These are the nearby positions, not the valve positions.
+	positions-near-valves grid-set
+	tunnels bool
+is-lights-puzzle bool(a block-puzzle-options)
+	light-every-block a.goal
+
+bounds grid-rect(a block-puzzle-options)
+	res = a.space.bounds
+	assert res[a.player-initial-position]
+	match a.goal
+	as grid-pos
+		assert res[a.goal]
+	as light-every-block
+		()
+	res
+
+blocks-puzzle-solver record mut
+	options block-puzzle-options
+	solver puzzle-solver
+new blocks-puzzle-solver(options block-puzzle-options)
+	options: options
+	solver:
+		state-size: options.state-size
+		capacity: options.space.size ** 2 * 0x1000
+
+show-solution string(solution block-puzzle-state[])
+	bounds grid-rect = union_ solution, of state
+		(union_ state.blocks, it.occupied-space.bounds) | state.player
+	join "\n", map solution, {show it, bounds}
+block-puzzle-state record
+	player grid-pos
+	blocks block[]
+	pillows grid-set
+	is-holding-pillow bool
+	shower bool
+show string(a block-puzzle-state, bounds grid-rect)
+	set grid-set-set =
+		- a.player,
+		-- for block in a.blocks
+			block.occupied-space
+		-- if any a.pillows
+			- a.pillows
+	shower = if a.shower then "shower is on\n"
+	"{shower}{show-without-bounds set, bounds}"
+
+| Returns the minimum number of steps to solve the puzzle
+is-solvable nat32?(solver blocks-puzzle-solver, a blocks-puzzle)
+	is-solvable solver.solver, (initial-state a, solver.options), get-config a, solver.options
+
+find-solution block-puzzle-state[]?(solver blocks-puzzle-solver, a blocks-puzzle)
+	config = get-config a, solver.options
+	initial nat8[] = initial-state a, solver.options
+	do if res = find-solution solver.solver, initial, config
+	bounds = solver.options.bounds
+	for x in res
+		to-block-puzzle-state x, config, bounds
+
+-to-block-puzzle-state block-puzzle-state(a nat8 array-view, config puzzle-config, bounds grid-rect)
+	player: pos-of-index! bounds, player-pos config, a
+	blocks:
+		for index in config.n-blocks
+			color: index
+			occupied-space: filter bounds.to::grid-set, of pos
+				(block = as-block a[as-index! bounds, pos]) and block == index
+			lit: if config.blocks-may-be-lit
+				if is-block-lit config, a, index
+					lit
+				else
+					unlit
+			else
+				never-lit
+			tunnel: if info = config.block-as-tunnel?[index + first-block-index]
+				info.dir0, info.dir1
+	pillows: filter bounds.all-positions, of pos
+		a[as-index! bounds, pos] == pillow
+	is-holding-pillow: is-holding-pillow a
+	shower: shower-is-on a
+
+-get-config puzzle-config(a blocks-puzzle, options block-puzzle-options)
+	bounds = options.bounds
+	grid: bounds.size,
+	fire-flood-lookup: for index in to::nat16 bounds.size.area
+		pos = pos-of-index! bounds, index
+		if a.fire[pos] then fire else if a.flood[pos] then flood else nothing
+	block-sizes:
+		-- n-of first-block-index, 0
+		-- map a.blocks, it.size.to
+	block-as-tunnel: if options.tunnels
+		-- n-of first-block-index, ()
+		-- map a.blocks, {tunnel-info it, bounds}
+	position-is-near-valve:
+		for index in to::nat8 bounds.size.area
+			options.positions-near-valves[pos-of-index! bounds, index]
+	goal: if grid-pos options.goal
+		to as-index! bounds, options.goal
+	blocks-may-be-lit: light-every-block options.goal
+
+| Everything needed to interpret a puzzle state
+-puzzle-config record puzzle-definition case
+	grid grid-indices
+	| Indexed by position
+	fire-flood-lookup nothing-fire-flood[]
+	| Indexed by the value, so entries less than {first-block-index} are unused
+	block-sizes nat8[]
+	block-as-tunnel block-tunnel-info?[]?
+	| Indexed by position
+	position-is-near-valve bool[]
+	| If present, the goal of the puzzle is to step on this position.
+	| Otherwise, there is a light at each position that is not permanently blocked
+	goal nat8?
+	blocks-may-be-lit bool
+-n-blocks nat8(a puzzle-config)
+	a.block-sizes.size.to - first-block-index
+-block-tunnel-info record
+	| Direction out of the tunnel, for the tunnel end with lesser position
+	dir0 dir4
+	| Direction out of the tunnel, for the tunnel end with greater position
+	dir1 dir4
+	| Displacement from the head with the lesser position to the head with the greater position
+	displacement nat8
+-tunnel-info block-tunnel-info?(block grid-set, bounds grid-rect)
+	do if as-tunnel-dirs block
+	head0, head1 = only2! for*::(dir4, nat8)[] pos in block
+		if dir = is-end-of-tunnel block, pos
+			- dir, to as-index! bounds, pos
+	head0.a, head1.a, head1.b - head0.b
+| Sort tunnel dirs to be consistent with {tunnel-info} -- lower position first
+-dirs (dir4, dir4)?(a block-tunnel-info)
+	a.dir0, a.dir1
+
+-nothing-fire-flood enum(nothing, fire, flood)
+-is-lights-puzzle bool(config puzzle-config)
+	not config.goal
+
+list-transitions block-puzzle-state[](options block-puzzle-options, puzzle blocks-puzzle, state block-puzzle-state)
+	config = get-config puzzle, options
+	state-bytes = from-block-puzzle-state options, puzzle, state
+	for x in list-transitions state-bytes, config
+		to-block-puzzle-state x, config, options.bounds
+
+-transitions void(config puzzle-config, state nat8 array-view, updater updater)
+	player-pos = player-pos config, state
+	if config.position-is-near-valve[player-pos]
+		# Player toggles a valve
+		emit-transition updater, state, of update
+			toggle-flag update, state, shower-is-on
+	for dir in members::dir4[]
+		do if forward-pos = move-in-dir player-pos, dir, config.grid
+		transitions-moving-to config, state, updater, forward-pos, dir
+		forward-value = state[forward-pos]
+		if forward-value == empty-space and not is-blocked-by-fire-or-flood state, forward-pos, config
+			if is-holding-pillow state
+				# Player drops pillow in front of them
+				emit-transition updater, state, of update
+					toggle-flag update, state, player-is-holding-pillow
+					update[forward-pos] := pillow
+			elif behind-pos = move-in-dir player-pos, -dir, config.grid
+				# Player pulls a block
+				behind-value = state[behind-pos]
+				do if as-block behind-value
+				try-pull-block config, state, forward-pos, dir, behind-pos, behind-value, player-pos, updater
+		elif forward-value == pillow and not is-holding-pillow state
+			# Player picks up a pillow
+			emit-transition updater, state, of update
+				toggle-flag update, state, player-is-holding-pillow
+				update[forward-pos] := empty-space
+		elif block = as-block forward-value and is-lights-puzzle config
+			transition-toggle-block-lit config, updater, state, block
+-transitions-moving-to void(config puzzle-config, state nat8 array-view, updater updater, new-player-pos nat8, dir dir4)
+	forward-value = state[new-player-pos]
+	if forward-value == empty-space
+		do unless is-blocked-by-fire-or-flood state, new-player-pos, config
+		# Player moves without affecting blocks
+		emit-transition updater, state, of update
+			move-player update, config, new-player-pos
+	elif as-block forward-value and not is-holding-pillow state
+		if tunnel = as-tunnel config, state, dir, new-player-pos, forward-value
+			transitions-moving-to config, state, updater, tunnel.exit-position, tunnel.exit-direction
+		unless is-blocked-by-fire-or-flood state, new-player-pos, config
+			try-push-block config, state, new-player-pos, dir, forward-value, updater
+
+-transition-toggle-block-lit void(config puzzle-config, updater updater, state nat8 array-view, block nat8)
+	assert config.n-blocks <= 32
+	affected-blocks mut nat32 = nth-bit block
+	for index in config.grid.area
+		do if other-block = as-block state[index]
+		for dir in members::dir4[]
+			if next = move-in-dir index, dir, config.grid and state[next].as-block == block
+				affected-blocks |:= nth-bit other-block
+	all-affected-blocks = affected-blocks
+	emit-transition updater, state, of update
+		for nth, index in with-index indices-for-lit-blocks config
+			byte = wrap-to::nat8 all-affected-blocks >> (nth * 8)
+			update[index] := state[index] ^ byte
+
+-as-tunnel-result record
+	| Direction you would be traveling in while exiting the tunnel
+	exit-direction dir4
+	| Position you would be at after exiting the tunnel
+	exit-position nat8
+-as-tunnel as-tunnel-result?
+	config puzzle-config
+	state nat8 array-view
+	# Direction the player is traveling
+	dir dir4
+	# First position in the block
+	first-pos nat8
+	# Block value
+	block nat8
+do
+	do if info = config.block-as-tunnel?[block]
+	if first-pos > info.displacement and state[first-pos - info.displacement] == block
+		do if info.dir1 == -dir
+		do if exit-position = move-in-dir first-pos - info.displacement, info.dir0, config.grid
+		info.dir0, exit-position
+	else
+		guess1 = first-pos + info.displacement
+		do if guess1 < config.grid.area
+		do if state[guess1] == block
+		do if info.dir0 == -dir
+		do if exit-position = move-in-dir guess1, info.dir1, config.grid
+		info.dir1, exit-position
+
+| Also moves the player along with it, but already assumes the player can move
+-try-push-block void
+	config puzzle-config
+	state nat8 array-view
+	new-player-pos nat8
+	dir dir4
+	block nat8
+	updater updater
+do
+	match config.block-sizes[block]
+	as 1
+		try-push-single-tile-block config, state, new-player-pos, dir, block, updater
+	as 2
+		try-push-2-tile-block config, state, new-player-pos, dir, block, updater
+	else
+		try-move-large-block state, config, new-player-pos, dir, block, updater
+
+-try-pull-block void
+	config puzzle-config
+	state nat8 array-view
+	new-player-pos nat8
+	dir dir4
+	block-pos nat8
+	block nat8
+	new-block-pos nat8
+	updater updater
+do
+	match config.block-sizes[block]
+	as 1
+		emit-transition updater, state, of update
+			move-player update, config, new-player-pos
+			update[new-block-pos] := block
+			update[block-pos] := empty-space
+	as 2
+		try-pull-2-tile-block config, state, new-player-pos, dir, block-pos, block, new-block-pos, updater
+	else
+		try-move-large-block state, config, new-player-pos, dir, block, updater
+
+-try-push-single-tile-block void
+	config puzzle-config
+	state nat8 array-view
+	new-player-pos nat8
+	dir dir4
+	block nat8
+	updater updater
+do
+	do if next-pos = move-in-dir new-player-pos, dir, config.grid
+	do if state[next-pos] == empty-space
+	emit-transition updater, state, of update
+		move-player update, config, new-player-pos
+		update[new-player-pos] := empty-space
+		update[next-pos] := block
+
+-try-push-2-tile-block void
+	config puzzle-config
+	state nat8 array-view
+	new-player-pos nat8
+	dir dir4
+	block nat8
+	updater updater
+do
+	indices = config.grid
+	do if block-forward-pos = move-in-dir new-player-pos, dir, indices
+	side-pos nat8? =
+		if left-pos = move-in-dir new-player-pos, dir.rotate-left, indices and state[left-pos] == block
+			left-pos
+		elif right-pos = move-in-dir new-player-pos, dir.rotate-right, indices and state[right-pos] == block
+			right-pos
+	if side-pos
+		#  B
+		# PB ->
+		# or
+		# PB ->
+		#  B
+		side-forward-pos = move-in-dir! side-pos, dir, indices
+		do if state[block-forward-pos] == empty-space and state[side-forward-pos] == empty-space
+		emit-transition updater, state, of update
+			move-player update, config, new-player-pos
+			update[side-pos] := empty-space
+			update[side-forward-pos] := block
+			update[new-player-pos] := empty-space
+			update[block-forward-pos] := block
+	else
+		# PBB ->
+		do if forward2 = move-in-dir block-forward-pos, dir, indices
+		do if state[forward2] == empty-space
+		emit-transition updater, state, of update
+			move-player update, config, new-player-pos
+			update[new-player-pos] := empty-space
+			update[forward2] := block
+
+-try-pull-2-tile-block void
+	config puzzle-config
+	state nat8 array-view
+	new-player-pos nat8
+	dir dir4
+	block-pos nat8
+	block nat8
+	new-block-pos nat8
+	updater updater
+do
+	indices = config.grid
+	dir-to-block = -dir
+	block-left-or-right-pos nat8? =
+		if left-pos = move-in-dir block-pos, dir-to-block.rotate-left, indices and state[left-pos] == block
+			left-pos
+		elif right-pos = move-in-dir block-pos, dir-to-block.rotate-right, indices and state[right-pos] == block
+			right-pos
+	if block-left-or-right-pos
+		#  B
+		# PB <-
+		# or
+		# PB <-
+		#  B
+		block-left-or-right-pulled-to = move-in-dir! block-left-or-right-pos, dir, indices
+		do if state[block-left-or-right-pulled-to] == empty-space
+		emit-transition updater, state, of update
+			move-player update, config, new-player-pos
+			update[new-block-pos] := block
+			update[block-pos] := empty-space
+			update[block-left-or-right-pos] := empty-space
+			update[block-left-or-right-pulled-to] := block
+	else
+		# PBB <-
+		forward2 = move-in-dir! block-pos, dir-to-block, indices
+		emit-transition updater, state, of update
+			move-player update, config, new-player-pos
+			update[new-block-pos] := block
+			update[forward2] := empty-space
+
+-try-move-large-block void
+	state nat8 array-view
+	config puzzle-config
+	new-player-pos nat8
+	dir dir4
+	block nat8
+	updater updater
+do
+	indices = config.grid
+	do if every 0::nat16 .. indices.area, of index
+		state[index] != block or
+			(next = move-in-dir index.to, dir, indices) and (state[next] == empty-space or state[next] == block)
+	emit-transition updater, state, of update
+		move-player update, config, new-player-pos
+		for index in indices.area
+			do if state[index] == block
+			if moves-to = move-in-dir index, dir, indices and state[moves-to] != block
+				update[moves-to] := block
+			unless moves-to-here =  move-in-dir index, -dir, indices and state[moves-to-here] == block
+				update[index] := empty-space
+
+region state representation
+
+-player-pos nat8(config puzzle-config, state nat8 array-view)
+	state[config.grid.area]
+
+-state-size nat32(a block-puzzle-options)
+	a.bounds.area + 1 + (if is-lights-puzzle a then divide-and-round-up a.space.bounds.area, 8) + 1
+
+-initial-state nat8[](a blocks-puzzle, options block-puzzle-options)
+	from-block-puzzle-state options, a,
+		player: options.player-initial-position
+		blocks: for index, block in with-index8 a.blocks
+			color: index
+			occupied-space: block
+			lit: if is-lights-puzzle options then unlit else never-lit
+			# Use tunnel-info instead of as-tunnel to ensure order of dirs is consistent
+			tunnel: if options.tunnels then ?dirs tunnel-info block, options.bounds
+		pillows: a.pillows
+		is-holding-pillow: false
+		# If the initial position is on fire, the shower must be on for the player to start
+		shower: a.fire[options.player-initial-position]
+
+-from-block-puzzle-state nat8[](options block-puzzle-options, puzzle blocks-puzzle, state block-puzzle-state)
+	blocks block grid-entities = to state.blocks
+	config = get-config puzzle, options
+	res nat8[] =
+		-- for pos in all-positions options.bounds
+			if block = index-of-entity-at-pos blocks, pos
+				to block + first-block-index
+			elif state.pillows[pos]
+				pillow
+			elif options.space[pos]
+				empty-space
+			else
+				permanently-blocked
+		- to as-index! options.bounds, state.player
+		-- if is-lights-puzzle options
+			bits-for-blocks puzzle.blocks.size.to, config.indices-for-lit-blocks.size.to
+		-
+			flags_ = (if state.shower then shower-is-on) | (if state.is-holding-pillow then player-is-holding-pillow)
+			flags_.to
+	to-block-puzzle-state res, config, options.bounds is state
+	res
+
+| Initialize bits not corresponding to blocks to 1
+~bits-for-blocks nat8[](n-blocks nat8, n-indices nat8)
+	assert n-blocks <= n-indices * 8
+	for i in n-indices
+		match i <=> n-blocks / 8
+		as less
+			0
+		as equal
+			~(low-n-bits n-blocks % 8)
+		as greater
+			0xff
+
+-empty-space nat8() = 0
+-permanently-blocked nat8() = 1
+-pillow nat8() = 2
+-first-block-index nat8() = 3
+-as-block nat8?(a nat8)
+	if a >= first-block-index then a - first-block-index
+
+-is-solved bool(config puzzle-config, state nat8 array-view)
+	if config.goal
+		(player-pos config, state) == config.goal
+	else
+		# This is why we used `bits-for-blocks`: we can just check that all bits are set.
+		every config.indices-for-lit-blocks, state[it] == 0xff
+
+-is-block-lit bool(config puzzle-config, state nat8 array-view, block nat8)
+	indices = indices-for-lit-blocks config
+	has-bit state[indices[block / 8]], block::nat32 % 8
+
+-indices-for-lit-blocks nat range(config puzzle-config)
+	if is-lights-puzzle config
+		first = config.grid.area + 1
+		# Use the area instead of the actual number of blocks,
+		# since we reuse the solver across many puzzles and need the state size to be consistent.
+		first .. first + (divide-and-round-up config.grid.area::nat8, 8)
+	else
+		0 .. 0
+-move-player void(update state-updates, config puzzle-config, new-pos nat8)
+	update[config.grid.area::nat8] := new-pos
+
+-state-flags flags
+	player-is-holding-pillow
+	shower-is-on
+-toggle-flag void(updater state-updates, state nat8 array-view, flag state-flags)
+	old-flags = get-flags state
+	new-flags = if old-flags[flag]
+		old-flags & ~flag
+	else
+		old-flags | flag
+	updater[state.size - 1] := new-flags.to
+-get-flags state-flags(a nat8 array-view)
+	trusted reinterpret-cast::state-flags a[end - 1]
+-is-holding-pillow bool(a nat8 array-view)
+	a.get-flags[player-is-holding-pillow]
+-shower-is-on bool(a nat8 array-view)
+	a.get-flags[shower-is-on]
+
+-is-blocked-by-fire-or-flood bool(a nat8 array-view, pos nat16, config puzzle-config)
+	match config.fire-flood-lookup[pos]
+	as nothing
+		false
+	as fire
+		not shower-is-on a
+	as flood
+		shower-is-on a

@@ -1,0 +1,78 @@
+import
+	game-backend/abstract-game
+	game-backend/audio
+	game-backend/input
+	game-backend/renderer
+	grid/geometry
+	keen/io/duration
+	keen/math/geom2d/size2
+	keen/random/random
+	./draw
+	./game/game-types
+	./game/game-util
+	./game/step
+	./animation
+	./screen-positions
+	./sound-animation
+	./fonts
+	./images
+	./music
+	./sounds
+
+house-of-slugs record mut, abstract-game case
+	random random
+	game mut game
+	animation-info mut animation-info?
+	sound-animation sound-animations
+
+title string(_ house-of-slugs)
+	"House of Slugs"
+
+house-of-slugs house-of-slugs(game game, random random)
+	random: random
+	game: game
+	animation-info: ()
+	sound-animation: random,
+
+all-fonts string[](_ house-of-slugs)
+	for font in members::font-id[]
+		font-path font
+
+all-images image-info[](_ house-of-slugs)
+	for image in members::image-id[]
+		size = image-size image
+		path: image-path image
+		size: size.width, size.height
+
+all-musics string[](_ house-of-slugs)
+	for music in members::music-id[]
+		music-path music
+
+all-sounds string[](_ house-of-slugs)
+	for sound in members::sound-id[]
+		sound-path sound
+
+step step-result(a house-of-slugs, input step-input)
+	now = input.now
+	unless a.animation-info
+		# Initialize this lazily so that the initial dt will be 0.
+		# (Otherwise when the game starts it is well into the animation.)
+		a.animation-info := (tiles-to-draw a.game, input.screen-size), now
+
+	save json?, music music-effect? =
+		the random = a.random
+		if trigger = input.trigger and change = apply-input a.game, trigger, input.holding, now
+			a.animation-info := game-step a.animation-info!, a.game, change.animations, now, input.screen-size
+			a.game := change.new-game
+			step a.sound-animation, now, change.animated-sounds, change.one-time-sounds
+			(if change.should-save then change.new-game.persistent-state.to), change.music
+		else
+			(), ()
+
+	save: save
+	music: music
+	sounds: this-frame-sounds a.sound-animation, now
+
+draw void(a house-of-slugs, renderer renderer, screen-size size2-32, now duration)
+	the renderer = renderer
+	draw screen-size.screen-region-to-render, a.game, a.animation-info!, now

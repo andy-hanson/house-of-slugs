@@ -1,0 +1,18 @@
+log-once[t] void(message symbol, value t) t to-json
+	do trusted
+	do unless seen-logs[message]
+	seen-logs ~:= message
+	log message, value
+log-once[t, u] void(message symbol, value t, value2 u) t to-json, u to-json
+	do trusted
+	do unless seen-logs[message]
+	seen-logs ~:= message
+	log message, value, value2
+
+-seen-logs global(symbol set) = ()
+
+test
+	# Just ensuring this is seen as used
+	do if false
+	log-once "test", 1::nat
+	log-once "test", 1::nat, 2::nat

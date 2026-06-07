@@ -1,0 +1,710 @@
+import
+	game-backend/renderer
+	grid/geometry
+	grid/grid-entities
+	grid/grid-set
+	grid/sparse-grid
+	keen/bits
+	keen/col/enum-set
+	keen/col/mut-enum-map
+	keen/io/duration
+	keen/math/geom2d/aa-rect
+	keen/math/geom2d/size2
+	keen/math/geom2d/triangle
+	keen/math/math
+	keen/math/vec
+	keen/random/random
+	keen/random/sfc
+	keen/random/util
+	keen/string/util
+	keen/string/unicode
+	./animation
+	./fonts
+	./game/game-types
+	./game/game-util
+	./game/knobs
+	./images
+	./util/more-grid-utils
+	./util/util
+
+draw void(screen aa-rect32, game game, anim animation-info, now duration) renderer
+	dt = now - anim.last-time
+	# Draw completely black background so areas we don't draw to don't show previous frames' renders
+	darken-screen screen, 1
+	if prev = anim.prev-for-fade-to-black and dt < fade-to-black-time
+		# Use 'forever' so the previous animations don't play out again
+		draw-inner screen, prev, anim: anim, now: now, dt: forever
+		darken-screen screen, dt / fade-to-black-time
+	else
+		draw-inner screen, game, anim: anim, now: now, dt: dt
+		if anim.prev-for-fade-to-black and dt - fade-to-black-time < fade-in-time
+			darken-screen screen, 1 - (dt - fade-to-black-time) / fade-in-time
+
+-darken-screen void(screen aa-rect32, opacity float) renderer
+	with in coordinate-system screen, screen
+		draw-rect screen, set black, alpha, opacity.to
+
+-draw-inner void(screen aa-rect32, game game, anim animation-and-time) renderer
+	draw-tiles screen, game, anim
+	if game.shower
+		with in coordinate-system screen, screen
+			for dest in shower-to-draw screen, anim.now
+				draw-image dest, shower
+	unless is-inside-puzzle game
+		draw-compass screen, game
+	match ui = game.ui-state
+	as ui-state-normal
+		unless is-inside-puzzle game
+			draw-items screen, game
+	as ui-state-initial
+		with in coordinate-system screen, screen
+			draw-line-of-text screen, "Press space bar", regular, white
+	as ui-state-item-select
+		draw-items screen, game
+	as ui-state-throw-select
+		draw-items screen, game
+	as ui-state-dialog
+		draw-dialog screen, game, ui.remaining[0], anim.dt
+	as ui-state-paused
+		with in coordinate-system screen, screen
+			draw-paused screen, game, ui
+	as ui-state-the-end
+		with in coordinate-system screen, screen
+			draw-the-end screen, game, ui
+
+-draw-line-of-text void(dest aa-rect32, text string, font font-id, color rgba) renderer
+	draw-line-of-text dest, text, font.to::nat, color
+-draw-line-of-text void(dest aa-rect32, measure string, actual string, font font-id, color rgba) renderer
+	draw-line-of-text dest, measure, actual, font.to::nat, color
+
+-draw-explain-controls void(dest aa-rect32) renderer
+	draw-rect dest, (0, 0, 0, 0.67)
+	lines (string, string)[] =
+		- "WASD keys, arrow keys, or D pad", "Move, change selected item"
+		- "Space bar or A button", "Talk, take items, grab blocks"
+		- "Shift key or B button", "Pass time"
+		- "Lower keys (Z through /) or Select button", "Open item selection"
+		- "Caps lock key, Enter key, or Start button", "Pause"
+	draw-rows (shrink-by-fraction dest, 1/4), lines, of row, (keys, actions)
+		bottom, top = split-vertically (shrink-by-fraction row, 1/4), 1/2
+		draw-line-of-text top, keys, regular, white
+		draw-line-of-text bottom, actions, regular, white
+
+-draw-dialog void(dest aa-rect32, game game, cur-dialog dialog-entry, dt duration) renderer
+	do with in coordinate-system dest, dest
+	bottom-part, top-part = split-vertically dest, 1/3
+
+	draw-rect dest, set black, alpha, 1/4
+	size size2-32 = square top-part.shorter-side
+	portrait aa-rect32 = match cur-dialog.side
+	as west
+		bottom-left: top-part.bottom-left, size: size
+	as east
+		bottom-right: top-part.bottom-right, size: size
+	draw-image portrait, dialog-image-region cur-dialog.who
+	if is-player cur-dialog.who and game.equipment[monocle]
+		draw-image portrait, dialog-player-monocle-overlay
+
+	draw-rect bottom-part, white
+	lines = dialog-lines cur-dialog.content, dt
+	draw-rows-with-minimum (shrink-by-fraction bottom-part, 0.05), lines, 3, of row, line
+		draw-line-of-text row, line.measure-text, line.actual-text, regular, black
+
+-dialog-line record
+	measure-text string
+	actual-text string
+-dialog-lines dialog-line[](content string, dt duration)
+	lines = split content.to::char32[], "\n"
+	remaining mut nat = to dt / dialog-duration-per-character
+	for line in lines
+		measure-text: line.to
+		actual-text: if remaining < line.size
+			res = line[0 .. remaining]
+			remaining := 0
+			res.to
+		else
+			remaining -:= line.size
+			line.to
+
+-draw-tiles void(screen aa-rect32, game game, anim animation-and-time) renderer
+	tiles-to-draw = interpolated-tiles-to-draw anim, tiles-to-draw game, screen.size
+	can-see-in-smoke = game.smoke[game.player.pos]
+	do with in coordinate-system screen, tiles-to-draw
+	tile-positions = to::grid-set smallest-containing::grid-rect tiles-to-draw
+	visible-before = anim.anim.prev-tiles-visible else tile-positions
+	visible-now = all-tiles-visible-to-player game else tile-positions
+	all-visible = if anim.dt < visibility-transition-time
+		visible-before | visible-now
+	else
+		visible-now
+	throwable = throwable-set game
+
+	can-see-through-smoke = of::bool pos grid-pos
+		can-see-in-smoke or not game.smoke[pos]
+	for pos in tile-positions
+		if all-visible[pos]
+			draw-tile-background pos, game, (visible-now[pos] and can-see-through-smoke[pos])
+	for pos in tile-positions
+		if visible-now[pos] and can-see-through-smoke[pos]
+			draw-tile-foreground-entity pos, game, anim
+	for pos in tile-positions
+		draw-tile-foreground-overlay pos, game, anim, visible-now[pos], throwable[pos],
+			smoke-before: ?kind anim.anim.last-smoke[pos]
+			smoke-now: ?kind game.smoke[pos]
+			can-see-through-smoke: can-see-in-smoke
+	for thing in anim.anim.things
+		draw-animation game, thing, anim
+	for sparkler in game.exclusive-entities
+		if sparkler sparkler
+			draw-circle sparkler.lit-region, (1, 1, 0.9, 0.5)
+	?draw-thrown anim.thrown, anim.dt
+	if anim.dt < visibility-transition-time
+		diff = diff visible-before, visible-now
+		black-removed float32 = to anim.dt / visibility-transition-time
+		black-added float32 = 1 - black-removed
+		for tile in diff.removed
+			draw-rect tile.square1.to, (0, 0, 0, black-removed)
+		for tile in diff.added
+			draw-rect tile.square1.to, (0, 0, 0, black-added)
+
+-draw-thrown void(thrown thrown-info, dt duration) renderer
+	do if dt < throw-animation-duration
+	where = a animated-position-parabola thrown.thrown-from, thrown.thrown-to, dt, throw-animation-duration
+	rotation-direction float32 = if thrown.thrown-to.x > thrown.thrown-from.x then -1 else 1
+	rotation float32 = rotation-direction * 2 * pi * (dt / throw-animation-duration).to
+	draw-image-rotated where, thrown.item.image-for-item, rotation
+
+-draw-animation void(game game, animation thing-to-animate, anim animation-and-time) renderer
+	match animation
+	as beam
+		dir = animation.dir
+		origin vec2-32 = center square1 animation.origin.to
+		destination = current-position game, anim, animation.destination
+		line = beam-line animation.kind
+		end = beam-end animation.kind
+		draw-beam-linear-part origin, destination, dir, anim.dt, line
+		end-rect aa-rect32 = center: destination - dir.to::vec2-32 * 0.5, size: (1, 1)
+		draw-non-looping-animation end-rect, anim.dt, end, animation.dir - north
+	as burn-up
+		dt = anim.dt - throw-animation-duration
+		draw-non-looping-animation animation.pos, dt, burn-up-animation
+	as splash
+		dt = anim.dt - (if animation.delay-until-after-throw then throw-animation-duration)
+		draw-non-looping-animation animation.pos, dt, splash-animation
+
+-draw-beam-linear-part void(a vec2-32, b vec2-32, dir dir4, dt duration, anim animation) renderer
+	length = length b - a
+	cur mut float32 = 0
+	while
+		next = cur + 1
+		point-a = a + dir.to::vec2-32 * cur
+		if next < length
+			point-b = a + dir.to::vec2-32 * next
+			beam-part = draw-beam-part point-a, point-b, dir
+			draw-non-looping-animation beam-part, dt, anim, dir - north
+			cur := next
+			true
+		else
+			beam-part = draw-beam-part point-a, b, dir
+			draw-non-looping-animation beam-part, dt, anim, dir - north
+			false
+
+-draw-beam-part aa-rect32(a vec2-32, b vec2-32, dir dir4)
+	match dir
+	as north
+		left: a.x - 0.5
+		right: a.x + 0.5
+		bottom: a.y
+		top: b.y
+	as east
+		left: a.x
+		right: b.x
+		bottom: a.y - 0.5
+		top: a.y + 0.5
+	as south
+		left: a.x - 0.5
+		right: a.x + 0.5
+		bottom: b.y
+		top: a.y
+	as west
+		left: b.x
+		right: a.x
+		bottom: a.y - 0.5
+		top: a.y + 0.5
+
+-to vec2-32(a dir4)
+	a.to::grid-displacement.to
+
+-current-position vec2-32(game game, anim animation-and-time, point beam-endpoint)
+	match point
+	as beam-endpoint-player
+		center a animated-position anim.anim.moved-player, game.player.pos, anim.dt, player-move-duration
+	as slug-id
+		slug = slug! find! game.exclusive-entities, {it.slug and it.id == point}
+		vacated = (anim.anim.slugs[point] else ()).vacated-pos
+		center a animated-position vacated, slug.main-head.pos, anim.dt, slug-move-duration
+	as grid-pos
+		center to::aa-rect32 square1 point
+
+-draw-looping-animation void(pos grid-pos, dt duration, animation animation) renderer
+	draw-looping-animation pos.to::vec2-32, dt, animation
+-draw-looping-animation void(pos vec2-32, dt duration, animation animation) renderer
+	draw-looping-animation pos.square1, dt, animation
+-draw-looping-animation void(dest aa-rect32, dt duration, animation animation) renderer
+	draw-looping-animation dest, dt, animation, forward
+-draw-looping-animation void(dest aa-rect32, dt duration, animation animation, rotation relative-dir4) renderer
+	frame = to::nat truncate-to::int dt / animation.duration-per-frame
+	draw-image-rotated dest, animation.frames[frame % animation.frames.size], rotation.angle
+
+-draw-non-looping-animation void(pos grid-pos, dt duration, animation animation) renderer
+	draw-non-looping-animation pos, dt, animation, forward
+-draw-non-looping-animation void(pos grid-pos, dt duration, animation animation, rotation relative-dir4) renderer
+	if dt >= () and dt < animation.duration
+		draw-looping-animation pos.square1.to, dt, animation, rotation
+-draw-non-looping-animation void(dest aa-rect32, dt duration, animation animation, rotation relative-dir4) renderer
+	if dt >= () and dt < animation.duration
+		draw-looping-animation dest, dt, animation, rotation
+
+-draw-tile-background void(pos grid-pos, a game, can-see-things bool) renderer
+	tile aa-rect32 = pos.square1.to
+	draw-image tile, tile-at-pos a, pos
+	do if can-see-things
+	if a.breadcrumbs[pos]
+		draw-image pos.randomly-jitter-breadcrumb, breadcrumb
+	if a.puzzle-win-switches[pos]
+		draw-image tile, puzzle-win-switch
+	if a.slimy[pos]
+		draw-image tile, slimy
+	if a.tile-map.fire[pos]
+		draw-image tile, if a.shower then potential-fire else active-fire
+	elif a.tile-map.flood[pos]
+		draw-image tile, if a.shower then active-flood else potential-flood
+
+-draw-tile-foreground-entity void(pos grid-pos, a game, anim animation-and-time) renderer
+	tile aa-rect32 = pos.square1.to
+	do if entity = a.exclusive-entities[pos]
+	is-being-thrown = of item item
+		(thrown = anim.thrown) and
+		thrown.thrown-to == pos and
+		thrown.item == item and
+		anim.dt < throw-animation-duration
+	match entity
+	as block
+		draw-image tile, block-image entity
+		if entity.lit == lit
+			draw-image tile, block-lit
+		if dir = is-end-of-tunnel entity, pos
+			draw-image tile, block-tunnel-overlay dir
+	as breakable-wall
+		draw-image tile, breakable-wall
+	as sparkler
+		draw-looping-animation pos, anim.dt, sparkler-animation
+	as ground-equipment
+		draw-image tile, equipment-image entity.equipment
+	as ground-flashlight-part
+		draw-image tile, flashlight-part-image entity.part
+	as ground-item
+		unless is-being-thrown[entity.item]
+			draw-image tile, item-image entity.item
+	as harley
+		match entity.state
+		as waiting
+			draw-looping-animation tile, anim.dt, harley-animation entity.dir, false
+		as moving
+			to-draw, is-walking = animated-position-parabola anim.anim.moved-harley, pos, anim.dt, harley-move-duration
+			draw-looping-animation to-draw, anim.dt, harley-animation entity.dir, is-walking
+		as stuck
+			draw-looping-animation tile, anim.dt, harley-stuck-animation
+		as slug-on-face
+			draw-image tile, harley-slug-on-face
+	as lit-bomb
+		unless is-being-thrown[entity.kind.to]
+			draw-image tile, lit-bomb-image entity.kind
+	as pillow
+		draw-image tile, pillow
+	as slug
+		unless is-being-thrown[entity.id]
+			draw-slug-part pos, entity, (anim.anim.slugs[entity.id] else ()), anim.dt
+	as valve
+		draw-image tile, valve
+	as warp
+		# Warps to and from the basement should use a stairs image.
+		# The warp from the foyer to the basement is a rare warp not on the edge.
+		if entity.dir
+			draw-image tile, directional-warp entity.dir
+		else
+			draw-image tile, stairs
+
+-smoke-info record
+	smoke-before smoke-kind?
+	smoke-now smoke-kind?
+	can-see-through-smoke bool
+
+-draw-tile-foreground-overlay void
+	pos grid-pos
+	a game
+	anim animation-and-time
+	is-visible bool
+	is-throwable bool
+	smoke smoke-info
+do renderer
+	tile aa-rect32 = pos.square1.to
+	if pos == a.player.pos
+		draw-player a.player, anim
+	if is-visible and kind = (smoke.smoke-before or smoke.smoke-now)
+		value-now float32 = if smoke.smoke-now then 1
+		current-value = if anim.dt < smoke-transition-time
+			value-prev float32 = if smoke.smoke-before then 1
+			lerp value-prev, value-now, to::float32 anim.dt / smoke-transition-time
+		else
+			value-now
+		if current-value != 0
+			draw-smoke pos, kind, anim.now, if smoke.can-see-through-smoke then current-value * 0.5 else current-value
+	if ui-state-throw-select a.ui-state
+		if is-throwable
+			draw-image tile, throwable
+		if a.ui-state.selected-throw-position == pos
+			draw-image tile, selected
+
+-draw-player void(player player, anim animation-and-time) renderer
+	to-draw, is-walking = animated-position anim.anim.moved-player, player.pos, anim.dt, player-move-duration
+	if anim.thrown and anim.dt < player.dir.player-throw-animation.duration
+		draw-looping-animation to-draw, anim.dt, player-throw-animation player.dir
+	else
+		draw-looping-animation to-draw, anim.dt, player-animation player, is-walking
+	if is-frozen player
+		draw-image to-draw, frozen-in-ice
+
+-draw-smoke void(pos grid-pos, kind smoke-kind, now duration, opacity float32) renderer
+	tile aa-rect32 = pos.square1.to
+	the random = sfc32 seed-from-pos pos
+	image = smoke-image kind
+	for _ in random 12 .. 16
+		base-position = random-pos-in tile
+		particle-size = random 0.4::float32 .. 0.8
+		oscillation-angle float32 = random 0::float32 .. 2 * pi
+		oscillation-radius = random 0.25::float32 .. 0.5
+		oscillation-period = seconds random 0.75::float32 .. 1.5
+		displacement float32 = oscillation-radius * sin (to::float32 now / oscillation-period)
+		dest aa-rect32 =
+			center: base-position + displacement * oscillation-angle.from-angle
+			size: square particle-size
+		draw-image-with-alpha dest, image, opacity
+
+-random-pos-in vec2-32(a aa-rect32) random
+	x: random a.left .. a.right
+	y: random a.bottom .. a.top
+
+-animated-position-parabola (aa-rect32, bool)(old-pos grid-pos?, cur-pos grid-pos, dt duration, move-duration duration)
+	if old-pos and dt < move-duration
+		mid = (old-pos.to::vec2-32 + cur-pos.to::vec2-32) / 2
+		value-mid = mid + (0, 0.33)
+		interpolator = parabolic-interpolator old-pos.to::vec2-32, value-mid, 0.5, cur-pos.to::vec2-32
+		interpolated = interpolator[(dt / move-duration).to]
+		- bottom-left: interpolated, size: (1, 1)
+		- true
+	else
+		- square1 cur-pos.to
+		- false
+
+-animated-position (aa-rect32, bool)(old-pos grid-pos?, cur-pos grid-pos, dt duration, move-duration duration)
+	if old-pos and dt < move-duration
+		- square1 lerp old-pos.to, cur-pos.to, (dt / move-duration).to
+		- true
+	else
+		cur-pos.square1.to, false
+
+| Make breadcrumbs more natural by not always appearing in the same spot
+-randomly-jitter-breadcrumb aa-rect32(pos grid-pos)
+	dest aa-rect32 = pos.square1.to
+	the random = sfc32 seed-from-pos pos
+	jitter-x = random -0.2::float32 .. 0.2
+	jitter-y = random -0.2::float32 .. 0.2
+	jitter vec2-32 = (jitter-x, jitter-y) * dest.width
+	dest + jitter
+
+-seed-from-pos nat32(pos grid-pos)
+	pos.x.wrap-to::nat16 'bits-cat pos.y.wrap-to::nat16
+
+-draw-slug-part void(pos grid-pos, slug slug, anim slug-animation-info, dt duration) renderer
+	if is-big slug
+		index = index-of! slug.positions, pos
+		# Since big slugs snap to position, do it in half the usual time
+		positions = if anim.vacated-pos and dt < slug-move-duration / 2
+			slug.positions[1 .. end] ~ anim.vacated-pos
+		else
+			slug.positions
+		tile aa-rect32 = to square1 positions[index]
+		dir-a, dir-b = curve-at-pos positions, index
+		if dir-a
+			if dir-b
+				if dir-a == dir-b
+					draw-image tile, big-slug-straight-middle slug.flags_, dir-b
+				else
+					draw-image tile, big-slug-curved-middle slug.flags_, as-curve-kind! dir-a, dir-b
+			else
+				draw-image tile, big-slug-head dir-a, slug.flags_, index == 0, anim.sees-hare, anim.stops-chasing
+		else
+			assert dir-b
+			draw-image tile, big-slug-head -dir-b, slug.flags_, index == 0, anim.sees-hare, anim.stops-chasing
+	else
+		to-draw, is-walking = animated-position anim.vacated-pos, pos, dt, slug-move-duration
+		draw-looping-animation to-draw, dt,
+			small-slug-animation slug.dir, slug.flags_, anim.sees-hare, anim.stops-chasing, is-walking
+
+	if is-frozen slug and some slug.heads, it.pos == pos
+		draw-image pos.square1.to, frozen-in-ice
+
+-square1 aa-rect32(pos vec2-32)
+	bottom-left: pos, size: (1, 1)
+
+-draw-items void(screen aa-rect32, a game) renderer
+	select = ui-state-item-select a.ui-state
+	if select
+		darken-screen screen, 1/4
+	do with in coordinate-system screen, screen
+	all-items = all-items-rect screen, a
+	draw-rect all-items, if select
+		0.8, 0.8, 0.7, 0.7
+	else
+		0.7, 0.7, 0.7, 0.3
+	max = a.max-inventory
+	for index in max
+		rect = inventory-item-rect screen, index, a.max-inventory, all-items
+		draw-image rect, if index::nat < a.inventory.size
+			image-for-item a.inventory[index]
+		else
+			missing-item-image
+	if select
+		draw-image (inventory-item-rect screen, a.selected-item-index, a.max-inventory, all-items), selected
+
+-all-items-rect aa-rect32(screen aa-rect32, game game)
+	tiles = tiles-to-draw game, screen.size
+	size = screen.item-size.square * game.max-inventory.inventory-grid-size
+	if (length-squared tiles.top-left - game.player.pos.to) < tiles.size.length-squared / 16
+		top-right: screen.top-right, size: size
+	else
+		top-left: screen.top-left, size: size
+-length-squared float32(a size2-32)
+	length-squared to::vec2-32 a
+
+-inventory-item-rect aa-rect32(screen aa-rect32, index nat8, max-inventory nat8, all aa-rect32)
+	item-size = item-size screen
+	item-grid-pos = item-grid-pos index, max-inventory
+	bottom-left = all.bottom-left + item-grid-pos.to * item-size
+	bottom-left: bottom-left
+	size: square item-size
+
+-item-size float32(screen aa-rect32)
+	screen.shorter-side / 10
+
+-image-for-item image-and-region(item item)
+	match item
+	as basic-item
+		item-image item
+	as slug-id
+		slug-as-item
+
+-draw-compass void(screen aa-rect32, a game) renderer
+	do if a.equipment[compass]
+	do with in coordinate-system screen, screen
+	rect = top-right: screen.top-right, size: square screen.shorter-side / 8
+	targets = compass-targets a
+	draw-image-with-alpha rect, compass-background, if any targets then 1 else 0.5
+	for target, angle in targets
+		length, color = needle-info target
+		draw-compass-needle rect, angle, length, color, target
+	draw-image-with-alpha rect, compass-cover, if any targets then 1 else 0.5
+
+-needle-info (float32, rgba)(a compass-target)
+	match a
+	as door
+		0.9, black
+	as harley
+		0.9, (0.6, 0.4, 0)
+	as slug-any
+		0.5, black
+	as slug-new
+		0.7, black
+	as treasure
+		0.9, (7/8, 2/3, 1/8)
+	as stairs
+		0.9, black
+
+-draw-compass-needle void
+	dest aa-rect32
+	angle float32
+	radius-fraction float32
+	color rgba
+	icon compass-target
+do renderer
+	center = dest.center
+	radius = dest.width / 2 * radius-fraction
+	displacement vec2-32 = from-angle angle
+	endpoint = center + displacement * radius
+	width = dest.width / 24
+	left = center + displacement.rotate-left * width
+	right = center + displacement.rotate-right * width
+	draw-triangle (left, right, endpoint), color
+	draw-image (center: endpoint, size: square dest.width / 4), compass-icon icon
+
+-draw-paused void(dest aa-rect32, game game, ui ui-state-paused) renderer
+	draw-rect dest, set black, alpha, 2/3
+	match ui.kind
+	as main
+		bottom-part, top-part = split-vertically dest, 2/3
+		draw-difficulty-select top-part, game, ui
+		draw-paused-the-end-common bottom-part, game
+	as slugs-list
+		draw-slugs-lists dest, game, ui.slugs
+	as credits
+		draw-credits dest
+	as explain-controls
+		draw-explain-controls dest
+
+-draw-slugs-lists void(screen aa-rect32, game game, info slugs-list-info) renderer
+	bottom, top = split-vertically screen, 7/8
+	top0, top1 = split-vertically (shrink-by-fraction top, 0.1), 1/3
+	draw-line-of-text top1, "Slugs you've met", regular, white
+	draw-line-of-text top0, "(for hardcore completionists)", regular, white
+	draw-columns bottom, info.slugs-per-area, of area-dest, (area, area-slugs)
+		draw-one-slugs-list area-dest, area, game.visited-areas[area], area-slugs, info.seen-slugs
+
+-draw-one-slugs-list void
+	full-dest aa-rect32
+	area area
+	seen-area bool
+	area-slugs slug-id[]
+	seen slug-id enum-set
+do renderer
+	dest = shrink-horizontally-by-fraction full-dest, 0.05
+	completed = seen-area and every area-slugs, seen[it]
+	area-name = if seen-area then upper-case-first show area else "???"
+	content, header = split-vertically dest, 9 / 10
+	draw-line-of-text header, area-name, title, if completed then completed-green else white
+	do if seen-area
+	if completed
+		crown-area aa-rect32 =
+			center: header.center.x, header.top
+			size: square header.height / 2
+		draw-image crown-area, crown
+	draw-rows content, area-slugs, of slug-dest, slug
+		slug-name = if seen[slug] then show slug else "???"
+		draw-line-of-text slug-dest, slug-name, regular, if seen[slug] then completed-green else white
+
+-draw-difficulty-select void(dest aa-rect32, game game, ui ui-state-paused) renderer
+	lower, upper = split-vertically dest, 1/2
+	l, r = split-horizontally upper, 1/2
+	draw-line-of-text (shrink-by-fraction l, 0.1), "Difficulty (changing resets area)", regular, white
+	draw-line-of-text (shrink-by-fraction r, 0.1), "Lowest difficulty used: {game.lowest-difficulty}", regular, white
+	draw-columns lower, members::difficulty[], of column, difficulty
+		color rgba = if difficulty == ui.next-difficulty then (0, 1, 0, 1) else white
+		draw-line-of-text column, "{difficulty}", regular, color
+
+-draw-the-end void(dest aa-rect32, game game, ui ui-state-the-end) renderer
+	draw-image dest, the-end game.lowest-difficulty
+	match ui.kind
+	as credits
+		draw-credits dest
+	as stats
+		draw-paused-the-end-common dest, game
+	as slugs-list
+		draw-slugs-lists dest, game, ui.slugs
+	as none
+		()
+
+-draw-credits void(dest aa-rect32) renderer
+	inner = shrink-by-fraction dest, 0.1
+	footer, most = split-vertically inner, 1/32
+	not-sounds credits[], yes-sounds credits[] = partition all-credits, {it.kind == sounds}
+	draw-columns most, (not-sounds, yes-sounds), of column-rect, creditses
+		draw-rows column-rect, creditses, of part-rect, credits
+			authors-array = sorted-case-insensitive credits.authors
+			if credits.kind == sounds
+				bottom, top = split-vertically part-rect, 9/10
+				draw-line-of-text top, credits.kind.show, title, white
+				draw-rows bottom, authors-array, of author-rect, author
+					draw-line-of-text author-rect, author, regular, white
+			else
+				bottom, top = split-vertically part-rect, 1/2
+				draw-line-of-text top, credits.kind.show, title, white
+				draw-line-of-text bottom, (join ", ", authors-array), regular, white
+	draw-line-of-text footer, "github.com/andy-hanson/house-of-slugs", title, white
+
+-sorted-case-insensitive string[](a string set)
+	sort a.to::string[], it.lower-case
+
+-shrink-by-fraction aa-rect32(a aa-rect32, fraction float32)
+	assert fraction < 1
+	center: a.center
+	size: a.size * (1 - fraction)
+-shrink-horizontally-by-fraction aa-rect32(a aa-rect32, fraction float32)
+	assert fraction < 1
+	left: a.left + a.width * fraction / 2
+	right: a.right - a.width * fraction / 2
+	bottom: a.bottom
+	top: a.top
+
+-draw-paused-the-end-common void(dest aa-rect32, game game) renderer
+	stats-dest, equipment-dest, flashlight-dest = split-vertically dest, 1/8, 5/8
+	draw-icons flashlight-dest, game.flashlight-parts, it.flashlight-part-image
+	draw-icons equipment-dest, game.equipment, it.equipment-image
+	stats = "{show-play-time game.play-time}  Turns: {game.total-turns}  Times slugged: {game.times-slugged}"
+	draw-line-of-text stats-dest, stats, title, white
+
+-draw-icons[t] void
+	dest aa-rect32
+	set t enum-set
+	get-image image-and-region data(x t)
+do t enum-like, renderer
+	draw-columns (shrink-to-ratio dest, (members::t[].size.to, 1)), members::t[], of part, member
+		square-part = shrink-to-ratio part, (1, 1)
+		draw-rect (shrink-by-fraction square-part, 0.1), (1, 1, 1, 0.5)
+		if set[member]
+			draw-image square-part, get-image[member]
+
+-show-play-time string(play-time duration)
+	h = round-down play-time.hours
+	hours = unless h == 0 then "{h}:"
+	minutes = pad "{round-down play-time.minutes % 60}", 2
+	seconds = pad "{round-down play-time.seconds % 60}", 2
+	msec = pad "{round-down play-time.milliseconds % 1000}", 3
+	"Play time: {hours}{minutes}:{seconds}.{msec}"
+
+-pad string(a string, target nat)
+	if a.size < target
+		(n-of target - a.size, "0")::char8[].to ~~ a
+	else
+		a
+
+-completed-green rgba() = 0.5, 1, 0, 1
+
+-draw-columns[t] void(dest aa-rect32, values t[], f void mut(x aa-rect32, value t)) renderer
+	draw-columns dest, values.size, of x, i
+		f[x, values[i]]
+-draw-columns void(dest aa-rect32, n nat, f void mut(x aa-rect32, index nat)) renderer
+	section-width = dest.width / n.to
+	for i in n
+		y = dest.left + section-width * i.to
+		next-y = dest.left + section-width * (i + 1).to
+		rect aa-rect32 = set dest, (left + right), (y, next-y)
+		f[rect, i]
+
+| If there are less than {minimum} values, keeps the row size the same as if there were {minimum} rows and centers them.
+-draw-rows-with-minimum[t] void(dest aa-rect32, values t[], minimum nat, f void mut(x aa-rect32, value t)) renderer
+	updated-dest = if values.size < minimum
+		scale-by-center dest, (1, values.size.to / minimum.to)
+	else
+		dest
+	draw-rows updated-dest, values, f
+
+-draw-rows[t] void(dest aa-rect32, values t[], f void mut(x aa-rect32, value t)) renderer
+	draw-rows dest, values.size, of x, i
+		f[x, values[i]]
+-draw-rows void(dest aa-rect32, n nat, f void mut(x aa-rect32, index nat)) renderer
+	section-height = dest.height / n.to
+	for i in n
+		y = dest.bottom + section-height * i.to
+		next-y = dest.bottom + section-height * (i + 1).to
+		rect aa-rect32 = set dest, (bottom + top), (y, next-y)
+		f[rect, n - 1 - i]

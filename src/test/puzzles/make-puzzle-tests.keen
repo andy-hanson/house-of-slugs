@@ -1,0 +1,28 @@
+import
+	grid/grid-set-set
+	../../game/game-types
+	../../puzzles/make-puzzle
+	../../puzzles/puzzle-solver
+	./puzzle-solver-tests
+
+-new make-blocks-puzzle-options(options block-puzzle-options)
+	seed: 7
+	options: options
+	add-fire-and-flood: none
+	add-pillows: false
+	add-tunnels: false
+	blocks-may-be-lit: false
+	max-blocks: 8
+
+test
+	options make-blocks-puzzle-options = options4x4,
+	puzzle = make-blocks-puzzle options
+	show puzzle.puzzle.blocks is quote
+		0, 1 to 4, 4
+		┌────┐
+		│ B C│
+		│ A C│
+		│AA C│
+		└────┘
+	puzzle.steps is 20
+	is-solvable (options.options,), puzzle.puzzle is 20

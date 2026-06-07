@@ -1,0 +1,74 @@
+import
+	keen/bits
+	keen/math/vec
+	keen/string/util
+	keen/string/unicode
+
+upper-case-first string(a string)
+	chars = to::char32[] a
+	"{upper-case to::string chars[0]}{to::string chars[1 .. end]}"
+
+only-where[col, elem] elem?(col col, f bool mut(x elem)) col size, (col, elem) some
+	only filter::elem[] col, f
+
+find-duplicate[t] t?(a t[]) t key
+	set t mut-set = ()
+	find a, {not try-add set, it}
+
+computed-lens[t, u] (t, u) lens(compute (t, u) lens data(value t)) t data, u data
+	get: of a
+		get a, compute[a]
+	set: of a, value
+		set a, compute[a], value
+
+set-if[t, u] t(a t, condition bool, lens (t, u) lens, value u)
+	if condition
+		set a, lens, value
+	else
+		a
+
+modify-if[t, u] t(a t, condition bool, lens (t, u) lens, f u mut(x u))
+	if condition
+		modify a, lens, f
+	else
+		a
+
+with-index8[col] record(inner col)
+size[col] nat(a col with-index8) col size
+	size a.inner
+some[col, elem] bool(a col with-index8, f bool mut(index nat8, value elem)) col size, (col, elem) some
+	assert a.inner.size <= max-value::nat8
+	index mut nat8 = 0
+	some a.inner, of x
+		res = f[index, x]
+		index wrap-add:= 1
+		res
+
+parabolic-interpolator-vec2 record
+	x parabolic-interpolator
+	y parabolic-interpolator
+subscript vec2-32(a parabolic-interpolator-vec2, t float32)
+	x: a.x[t]
+	y: a.y[t]
+parabolic-interpolator parabolic-interpolator-vec2(value0 vec2-32, value-mid vec2-32, time-mid float32, value1 vec2-32)
+	x: parabolic-interpolator value0.x, value-mid.x, time-mid, value1.x
+	y: parabolic-interpolator value0.y, value-mid.y, time-mid, value1.y
+
+parabolic-interpolator record
+	a float32
+	b float32
+	c float32
+subscript float32(a parabolic-interpolator, t float32)
+	a.a * t ** 2 + a.b * t + a.c
+parabolic-interpolator parabolic-interpolator(value0 float32, value-mid float32, time-mid float32, value1 float32)
+	###
+	f(t) = a * t**2 + b * t + value0
+	f(1) = value1, so a + b = value1 - value0
+		So b = value1 - value0 - a
+	f(time-mid) = value-mid, so a * time-mid ** 2 + b * time-mid + value0 = value-mid
+		so a * time-mid ** 2 + (value1 - value0 - a) * time-mid + value0 = value-mid
+		so a = (value-mid - value0 - (value1 - value0) * time-mid) / (time-mid ** 2 - time-mid)
+	###
+	range = value1 - value0
+	a = (value-mid - value0 - range * time-mid) / (time-mid ** 2 - time-mid)
+	a: a, b: range - a, c: value0

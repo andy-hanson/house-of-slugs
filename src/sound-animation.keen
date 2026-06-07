@@ -1,0 +1,48 @@
+import
+	game-backend/audio
+	keen/col/mut-priority-queue
+	keen/io/duration
+	keen/random/random
+	keen/random/util
+	./sounds
+	./game/game-util
+
+sound-animations record mut
+	-last-step mut duration
+	-random mut random
+	-animations single-sound-animation mut[sound-position]
+	-sounds (duration, sound-details) mut-priority-queue
+-single-sound-animation record mut
+	sound animated-sound
+	next-sound-time mut duration
+new sound-animations(random random)
+	last-step: ()
+	random: random
+	animations: ()
+	sounds: ()
+
+step void(a sound-animations, now duration, cur animated-sound[sound-position], sounds sound-details[])
+	a.last-step := now
+	a.animations filter= of key, _ then cur[key]
+	for key, value in cur
+		x = a.animations[key]
+		a.animations[key] := sound: value, next-sound-time: (x.?next-sound-time else now)
+	for sound in sounds
+		a.sounds ~= (now + sound.delay, sound)
+
+this-frame-sounds sound-details[](a sound-animations, now duration)
+	the random = a.random
+	do with out in build
+	for _, x in a.animations
+		dt = now - a.last-step
+		do if dt >= x.sound.duration.low and dt <= x.sound.duration.high
+		do if now > x.next-sound-time
+		x.next-sound-time := now + (seconds random::float32 0.25::float32 .. 0.5)
+		out ~= random-sound x.sound
+	while _, sound = pop-if a.sounds, it.a <= now
+		out ~= sound
+
+-random-sound sound-details(a animated-sound) random
+	sound-id: to random to::sound-id[] a.sounds
+	volume: a.volume
+	pitch: vary-pitch a.pitch-variation

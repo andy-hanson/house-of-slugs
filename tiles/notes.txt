@@ -1,0 +1,2 @@
+objects.png / objects.tsj are not be used in-game, they are just needed to show the objects in Tiled.
+The order of objects.png matches the 'tile-object-kind' enum.

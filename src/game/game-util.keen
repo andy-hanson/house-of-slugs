@@ -1,0 +1,479 @@
+import
+	game-backend/audio
+	grid/geometry
+	grid/grid-entities
+	grid/grid-set
+	grid/sparse-grid
+	grid/util/more-geometry
+	grid/util/visibility
+	keen/bits
+	keen/col/enum-map
+	keen/col/enum-set
+	keen/io/duration
+	keen/math/geom2d/aa-rect
+	keen/math/geom2d/circle
+	keen/math/geom2d/size2
+	keen/math/vec
+	keen/random/random
+	keen/random/util
+	keen/random/sfc
+	keen/string/unicode
+	../fonts
+	../images
+	../music
+	../sounds
+	../util/util
+	./areas
+	./game-types
+	./knobs
+
+credits record
+	kind credits-kind
+	authors string set
+credits-kind enum
+	game
+	art
+	fonts
+	music
+	sounds
+show string(a credits-kind)
+	match a
+	as game then "Game"
+	as art then "Art"
+	as fonts then "Fonts"
+	as music then "Music"
+	as sounds then "Sounds"
+all-credits credits[]()
+	- game, ("Andy Hanson",)
+	- art, image-authors
+	- fonts, font-authors
+	- music, music-authors
+	- sounds, sound-authors
+
+slugs-list-info slugs-list-info(a game)
+	slugs-per-area: slugs-per-area
+	seen-slugs: to-set a.has-talked-to-slug, it.b != 0
+
+slugs-per-area (area, slug-id[])[]()
+	for area in areas-with-unique-slugs
+		config = area-config area
+		slugs slug-id[] =
+			-- map config.npcs, it.b
+			-- map config.tutorial-slugs, it.b
+			-- map config.sprinkle.slugs, it.id
+		area, sort slugs, it.show
+
+thrown-info record
+	item item
+	thrown-from grid-pos
+	thrown-to grid-pos
+
+step-animation-info record
+	changed-area bool
+	dizzy-trap bool
+	moved-harley grid-pos?
+	moved-player grid-pos?
+	thrown thrown-info?
+	| Has the vacated position of any slug that just moved. (For a big slug that is the old tail position.)
+	slugs slug-animation-info[slug-id]
+	things thing-to-animate[]
+new step-animation-info() = (), (), (), (), (), (), ()
+any bool(a step-animation-info)
+	a.changed-area or
+	a.dizzy-trap or
+	a.moved-harley or
+	a.moved-player or
+	any a.slugs or
+	any a.things
+slug-animation-info record
+	vacated-pos grid-pos?
+	sees-hare bool
+	stops-chasing bool
+new slug-animation-info(vacated-pos grid-pos) = vacated-pos, (), ()
+new slug-animation-info(sees-hare bool) = (), sees-hare, ()
+new slug-animation-info(stops-chasing bool) = (), (), stops-chasing
+new slug-animation-info() = (), (), ()
+
+thing-to-animate union
+	beam
+	burn-up
+	splash
+beam record
+	kind beam-kind
+	dir dir4
+	origin grid-pos
+	destination beam-endpoint
+beam-endpoint union(beam-endpoint-player, slug-id, grid-pos)
+beam-endpoint-player record
+burn-up record(pos grid-pos)
+splash record(delay-until-after-throw bool, pos grid-pos)
+
+sound-position union(grid-pos, nowhere)
+nowhere record
+
+game-change-effects record mut
+	| Also used to reload the area
+	next-area mut area?
+	should-sync-play-time mut bool
+	should-reset-play-time mut bool
+	anim mut step-animation-info
+	music mut music-effect?
+	one-time-sounds (sound-position, sound-details) mut[]
+	animated-sounds animated-sound mut[sound-position]
+new game-change-effects() = (), (), (), (), (), (), ()
+-change-anim void(f step-animation-info mut(x step-animation-info)) game-change-effects
+	the::game-change-effects.anim := f[the::game-change-effects.anim]
+reload-current-area void(a game) game-change-effects
+	go-to-next-area a.area
+go-to-next-area void(next-area area) game-change-effects
+	the::game-change-effects.next-area := next-area
+animate-move-harley void(vacated-position grid-pos) game-change-effects
+	change-anim {set it, moved-harley, vacated-position}
+animate-move-player void(vacated-position grid-pos) game-change-effects
+	change-anim {set it, moved-player, vacated-position}
+animate-slug void(slug slug-id, info slug-animation-info) game-change-effects
+	change-anim of anim
+		modify anim, slugs, it ~ (slug, info)
+animate-throw void(info thrown-info) game-change-effects
+	change-anim {set it, thrown, info}
+show-animation void(animation thing-to-animate) game-change-effects
+	change-anim of anim
+		modify anim, things, it ~ animation
+play-music void(music music-id, fade-in duration) game-change-effects
+	the::game-change-effects.music := play-music music.to, fade-in
+pause-music void() game-change-effects
+	the::game-change-effects.music := pause-music
+unpause-music void() game-change-effects
+	the::game-change-effects.music := unpause-music
+play-sound void(pos sound-position, sound sound-id) game-change-effects
+	play-sound pos, (sound.to,)
+play-sound void(pos sound-position, sound sound-details) game-change-effects
+	the::game-change-effects.one-time-sounds ~= pos, sound
+play-sound void(pos sound-position, sound animated-sound) game-change-effects
+	the::game-change-effects.animated-sounds[pos] := sound
+sync-play-time void() game-change-effects
+	the::game-change-effects.should-sync-play-time := true
+reset-play-time void() game-change-effects
+	the::game-change-effects.should-reset-play-time := true
+
+| Returns an empty option for infinite visibility
+all-tiles-visible-to-player grid-set?(a game)
+	# As a failsafe, make everything visible when inside a wall
+	do if a.ground[a.player.pos]
+	if a.visibility == perfect
+		if is-crying a.player
+			positions-inside center: a.player.pos.to, radius: 2.5
+	else
+		if bounds = find a.puzzle-bounds, it[a.player.pos]
+			to expand bounds
+		else
+			a.sparklers-visibility | match a.visibility
+			as perfect
+				:: grid-set
+				throw unreachable
+			as basement
+				# In bathroom: Lit by a linear flashlight
+				distance float32 = if has-completed-flashlight a then player-visibility-distance a else 2
+				lit-slugs grid-set = union_ a.exclusive-entities, of slug
+					if slug slug and is-lit-up slug
+						occupied-space slug
+				lit-slugs | all-visible-tiles a.walls, a.player.pos, a.player.dir, distance, strict
+			as bedroom
+				player = positions-inside center: a.player.pos.to, radius: 2
+				slugs grid-set = union_ a.exclusive-entities, of x
+					if slug x and not is-sleeping x
+						expand x.occupied-space
+				player | slugs
+
+-sparklers-visibility grid-set(a game)
+	union_ a.exclusive-entities, of x
+		if sparkler x
+			positions-inside lit-region x
+
+has-completed-flashlight bool(a game)
+	is-full a.flashlight-parts
+
+throwable-set grid-set(a game)
+	positions-inside center: a.player.pos.to, radius: player-throw-distance a.equipment[glove]
+
+is-inside-puzzle grid-rect?(a game)
+	find a.puzzle-bounds, it[a.player.pos]
+
+| This is the eventual state if you wait; it gets animated towards this point.
+tiles-to-draw aa-rect32(a game, aspect-ratio size2-32)
+	base aa-rect32 = if bounds = is-inside-puzzle a
+		to expand bounds, 1
+	else
+		player-center vec2-32 = a.player.pos.to + (0.5, 0.5)
+		center: player-center, size: square a.player-visibility-distance * 2
+	try-move-within a.tile-map.bounds.to, expand-to-ratio base, aspect-ratio
+
+-player-visibility-distance float32(a game)
+	player-visibility-distance a.equipment[monocle]
+
+slug-condition smoke-kind?(game game, slug slug)
+	first slug.occupied-space, of pos
+		game.smoke[pos].?kind
+
+compass-targets (compass-target, float32)[](a game)
+	do with out in build
+	player = a.player.pos
+	if t = angle-to-closest player, treasure-positions a
+		out ~= treasure, t
+	if h = get-harley a and angle = angle-to-closest player, h.occupied-space
+		out ~= harley, angle
+
+	match a.area
+	as backyard
+		()
+	as basement
+		out ~= stairs, angle-to player, find-warp-to a, backyard
+	as bathroom
+		()
+	as bedroom
+		()
+	as foyer
+		if has-completed-flashlight a
+			out ~= stairs, angle-to player, find-warp-to a, basement
+		else
+			unobtained-flashlight-parts grid-set = union_ a.exclusive-entities, of warp
+				do if warp warp
+				do if f = flashlight-part-for-area a.seed, warp.next-area
+				do unless a.flashlight-parts[f]
+				occupied-space warp
+			if angle = angle-to-closest player, unobtained-flashlight-parts
+				out ~= treasure, angle
+	as garden
+		out ~= door, angle-to player, find-warp-to a, foyer
+	as kitchen
+		()
+	if part = flashlight-part-for-area a.seed, a.area and a.flashlight-parts[part]
+		out ~= door, angle-to player, find-warp-to a, foyer
+
+	any-slug = angle-to-slug a, {true}
+	new-slug = angle-to-slug a, {a.has-talked-to-slug[it.id] == 0}
+	if any-slug and new-slug != any-slug
+		out ~= slug-any, any-slug
+	if new-slug
+		out ~= slug-new, new-slug
+
+-angle-to-slug float32?(a game, filter bool mut(x slug))
+	angle-to-closest a.player.pos, union_ a.exclusive-entities, {if slug it and filter[it] then occupied-space it}
+
+-angle-to-closest float32?(source grid-pos, dest grid-set)
+	do unless dest[source]
+	do if pos = nearest-to dest, source
+	angle to::vec2-32 pos - source
+
+-find-warp-to grid-pos(a game, to-area area)
+	first! a.exclusive-entities, of e
+		if warp e and e.next-area == to-area
+			e.pos
+
+-treasure-positions grid-set(a game)
+	map-optionally a.exclusive-entities, it.as-treasure
+-as-treasure grid-pos?(a exclusive-entity)
+	match a
+	as ground-equipment
+		a.pos
+	as ground-flashlight-part
+		a.pos
+	else
+		()
+
+get-chaseable-harley harley?(a game)
+	do if res = get-harley a
+	do if res.state != waiting
+	res
+get-harley harley?(a game)
+	get-harley a.area-state
+get-harley harley?(a area-state)
+	?harley find a.exclusive-entities, it.harley
+set-final-state area-state(a area-state)
+	a
+	then set player * pos, a.get-harley!.pos + south::dir4
+	then modify exclusive-entities, of entities
+		warp = pos warp! only-where! a.exclusive-entities, it.warp
+		sob mut slug? = ()
+		z = update-without-moving entities, of x
+			match x
+			as harley
+				set x, state, moving
+			as slug
+				if x.id == slug-of-beginnings
+					sob := x
+					()
+				else
+					modify x, flags_, it & ~npc
+			else
+				x
+		# slug of beginnings guards the exit
+		z ~ set sob!, (positions + dir), ((warp + north::dir4,), north)
+	# It will still show as a safe tile, but have no effect
+	then set tile-map * safe, ()
+	then set tile-map * ground-minus-safe, a.tile-map.ground
+
+list-missing-equipment (area, equipment[])[](a game)
+	for* area in (bedroom, bathroom, kitchen)::area[]
+		missing equipment[] = for* n in 2::nat8
+			e = equipment-for-area a.seed, area, n
+			unless a.equipment[e]
+				- e
+		if any missing
+			- area, missing
+
+babeki area(a babeki, seed nat64)
+	seed.all-babeki[a.n]
+
+-babeki-dirs relative-dir4[]()
+	left, forward, right
+
+-all-babeki area[](seed nat64)
+	the random = sfc32 (seed ^ 0xbabe) # Just ensuring this isn't the same seed we use for {equipment-for-area}
+	shuffle (bathroom, bedroom, kitchen)::area[]
+
+reverse-babeki nat8(a area, seed nat64)
+	to index-of! seed.all-babeki, a
+
+area-rotation relative-dir4(area area, seed nat64)
+	match area
+	as backyard
+		forward
+	as basement
+		forward
+	as bathroom
+		babeki-dirs[reverse-babeki area, seed]
+	as bedroom
+		babeki-dirs[reverse-babeki area, seed]
+	as foyer
+		forward
+	as garden
+		forward
+	as kitchen
+		babeki-dirs[reverse-babeki area, seed]
+
+# This keeps equipment random while ensuring that no equipment appears twice (the two bags are considered different)
+equipment-for-area equipment(seed nat64, area area, n nat)
+	assert n < 2
+	the random = sfc32 seed
+	all equipment[] = shuffle members::equipment[]
+	begin nat = match area
+	as bedroom then 0
+	as bathroom then 2
+	as kitchen then 4
+	else
+		throw unreachable
+	all[begin + n]
+
+shuffled-flashlight-parts flashlight-part[](seed nat64)
+	the random = sfc32 seed
+	shuffle members::flashlight-part[]
+
+flashlight-part-for-area flashlight-part?(seed nat64, area area)
+	n nat? = match area
+	as bathroom then 0
+	as bedroom then 1
+	as kitchen then 2
+	else then ()
+	seed.shuffled-flashlight-parts?[n]
+
+dialog-sounds-for animated-sound?(a dialog-entry)
+	sounds = match a.who
+	as big-slug
+		big-slug-sounds
+	as big-slug-dizzy
+		big-slug-sounds
+	as big-slug-frozen
+		()
+	as big-slug-waking-up
+		big-slug-sounds
+	as big-slug-wow
+		big-slug-sounds
+	as big-ice-slug
+		big-slug-sounds
+	as big-ice-slug-dizzy
+		big-slug-sounds
+	as big-ice-slug-waking-up
+		big-slug-sounds
+	as big-ice-slug-wow
+		big-slug-sounds
+	as bull-slug
+		slug-dialog-sounds
+	as bull-slug-dizzy
+		slug-dialog-sounds
+	as bull-slug-frozen
+		()
+	as bull-slug-waking-up
+		slug-waking-up-sounds
+	as bull-slug-wow
+		slug-dialog-sounds
+	as cookie-slug
+		slug-dialog-sounds
+	as cookie-slug-dizzy
+		slug-dizzy-sounds
+	as cookie-slug-frozen
+		()
+	as cookie-slug-waking-up
+		slug-waking-up-sounds
+	as cookie-slug-wow
+		slug-dialog-sounds
+	as harley
+		harley0, harley1, harley2, harley3
+	as harley-aah
+		()
+	as ice-slug
+		slug-dialog-sounds
+	as ice-slug-dizzy
+		slug-dizzy-sounds
+	as ice-slug-waking-up
+		slug-waking-up-sounds
+	as ice-slug-wow
+		slug-dialog-sounds
+	as player
+		player-sounds
+	as player-aah
+		()
+	as player-crying
+		player-sounds
+	as player-sleepy
+		player-sounds
+	as slug
+		slug-dialog-sounds
+	as slug-dizzy
+		slug-dizzy-sounds
+	as slug-frozen
+		()
+	as slug-waking-up
+		slug-waking-up-sounds
+	as slug-wow
+		slug-dialog-sounds
+	as soda-slug
+		slug-dialog-sounds
+	as soda-slug-dizzy
+		slug-dialog-sounds
+	as soda-slug-frozen
+		()
+	as soda-slug-waking-up
+		slug-dialog-sounds
+	as soda-slug-wow
+		slug-dialog-sounds
+	if any sounds
+		duration: () .. dialog-duration-per-character * a.content.to::char32[].size.to
+		volume: 1
+		pitch-variation: 1
+		pan: 0
+		sounds: sounds
+
+dialog-duration-per-character duration()
+	seconds 1/32
+
+-big-slug-sounds sound-id set()
+	big-slug0, big-slug1, big-slug2
+-player-sounds sound-id set()
+	player0, player1, player2, player3
+-slug-dialog-sounds sound-id set()
+	slug0, slug1, slug2, slug3, slug4, slug5, slug6, slug7, slug8
+-slug-dizzy-sounds sound-id set()
+	slug-dialog-sounds
+-slug-waking-up-sounds sound-id set()
+	slug-dialog-sounds

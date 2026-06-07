@@ -1,0 +1,249 @@
+import
+	./credit
+	keen/io/duration
+	keen/random/random
+	keen/random/util
+
+sparkler-sounds animated-sound(volume float32)
+	duration: () .. forever
+	volume: 0.5 * volume
+	pitch-variation: 0
+	pan: 0
+	sounds: sparkler0, sparkler1, sparkler2
+
+vary-volume float32(variation float32) random
+	assert 0::float32 <= variation and variation <= 1
+	if variation == 0
+		0.5
+	else
+		max-diff = variation / 2
+		random (0.5 - max-diff)::float32 .. (0.5 + max-diff)
+
+| Variation is in [0, 1].
+| With no variation, result is always 1.
+| With maximum variation, result is a random number in [-1/2, 2].
+vary-pitch float32(variation float32) random
+	assert 0::float32 <= variation and variation <= 1
+	if variation == 0
+		1
+	else
+		2 ** random (-variation .. variation)
+
+sound-id enum
+	big-slug0
+	big-slug1
+	big-slug2
+	block-light
+	bomb
+	burn-up
+	door
+	eat
+	got-item
+	got-major-item
+	harley0
+	harley1
+	harley2
+	harley3
+	ice-beam
+	jump
+	lose
+	menu
+	not-allowed
+	perfume
+	player0
+	player1
+	player2
+	player3
+	puzzle-solved
+	soda
+	slip
+	splash
+	spotted
+	slug0
+	slug1
+	slug2
+	slug3
+	slug4
+	slug5
+	slug6
+	slug7
+	slug8
+	sparkler0
+	sparkler1
+	sparkler2
+	stairs
+	step-basement
+	step-bedroom
+	step-indoors
+	step-outdoors
+	throw_
+	valve
+
+animated-sound record
+	| Sound plays during the range
+	duration duration range
+	volume float32
+	pitch-variation float32
+	pan float32
+	sounds sound-id set
+do
+	assert 0::float32 <= volume and volume <= 1
+	assert 0::float32 <= pitch-variation and pitch-variation <= 1
+	assert -1::float32 <= pan and pan <= 1
+	assert any sounds
+delay animated-sound(a animated-sound, delay duration)
+	duration: a.duration.low + delay .. a.duration.high + delay
+	volume: a.volume
+	pitch-variation: a.pitch-variation
+	pan: a.pan
+	sounds: a.sounds
+	# TODO: 'modify' on a record with an empty type in it causes internal errors in keen
+	# modify a, duration, it.low + delay .. it.high + delay
+
+sound-path string(a sound-id)
+	"sounds/{to::symbol a}.wav"
+
+sound-authors string set()
+	all-authors map members::sound-id[], it.credit
+credit credit(a sound-id)
+	match a
+	as big-slug0
+		yannsauvin
+	as big-slug1
+		yannsauvin
+	as big-slug2
+		yannsauvin
+	as block-light
+		url: "opengameart.org/content/dings-0"
+		authors: "Wandering Door Games",
+	as bomb
+		bart
+	as burn-up
+		url: "opengameart.org/content/spell-4-fire"
+		authors: "Bart K.",
+	as door
+		url: "freesound.org/s/618109"
+		authors: "NachtmahrTV",
+	as eat
+		url: "opengameart.org/content/7-eating-crunches"
+		authors: "StarNinjas",
+	as got-item
+		damaged-panda
+	as got-major-item
+		url: "opengameart.org/content/level-up-power-up-coin-get-13-sounds"
+		authors: "wobbleboxx",
+	as harley0
+		missozzy
+	as harley1
+		missozzy
+	as harley2
+		missozzy
+	as harley3
+		missozzy
+	as ice-beam
+		url: "opengameart.org/content/ice-electricity-magic"
+		authors: "qubodup",
+	as jump
+		url: "opengameart.org/content/cute-cartoon-jump-sound-effect"
+		authors: "cfork", "qubodup"
+	as lose
+		url: "opengameart.org/content/peacock-scream"
+		authors: "popthebubbles4",
+	as menu
+		url: "opengameart.org/content/menu-selection-click"
+		authors: "NenadSimic",
+	as not-allowed
+		url: "opengameart.org/content/wrong-choice-caught"
+		authors: "DavidW",
+	as perfume
+		bart
+	as player0
+		qubodup
+	as player1
+		qubodup
+	as player2
+		qubodup
+	as player3
+		qubodup
+	as puzzle-solved
+		url: "opengameart.org/content/point-bell"
+		authors: "Brandon75689",
+	as slip
+		url: "opengameart.org/content/cartoonish-sound-for-throwing-things"
+		authors: "copyc4t (Paolo D'Emilio)",
+	as slug0
+		michijung
+	as slug1
+		michijung
+	as slug2
+		michijung
+	as slug3
+		michijung
+	as slug4
+		michijung
+	as slug5
+		michijung
+	as slug6
+		michijung
+	as slug7
+		michijung
+	as slug8
+		michijung
+	as soda
+		url: "opengameart.org/content/boom-pack-1"
+		authors: "dklon",
+	as sparkler0
+		inspectorj
+	as sparkler1
+		inspectorj
+	as sparkler2
+		inspectorj
+	as splash
+		url: "opengameart.org/content/40-cc0-water-splash-slime-sfx"
+		authors: "rubberduck",
+	as spotted
+		url: "opengameart.org/content/solo-seagull-sound-effects"
+		authors: "Rango Mango",
+	as stairs
+		url: "freesound.org/s/209478"
+		authors: "sinatra314",
+	as step-basement
+		leohpaz
+	as step-bedroom
+		url: "https://freesound.org/s/208878"
+		authors: "Yuval",
+	as step-indoors
+		url: "opengameart.org/content/fantasy-sound-effects-library"
+		authors: "Little Robot Sound Factory",
+	as step-outdoors
+		leohpaz
+	as throw_
+		damaged-panda
+	as valve
+		url: "opengameart.org/content/100-cc0-sfx"
+		authors: "rubberduck",
+
+-bart credit()
+	url: "opengameart.org/content/steam-release-sounds"
+	authors: "bart",
+-damaged-panda credit()
+	url: "opengameart.org/content/100-plus-game-sound-effects-wavoggm4a"
+	authors: "Damaged Panda",
+-inspectorj credit()
+	url: "freesound.org/s/484270"
+	authors: "InspectorJ",
+-leohpaz credit()
+	url: "https://opengameart.org/content/12-player-movement-sfx"
+	authors: "leohpaz",
+-michijung credit()
+	url: "freesound.org/s/868006"
+	authors: "MichiJung",
+-missozzy credit()
+	url: "freesound.org/s/172006"
+	authors: "missozzy",
+-qubodup credit()
+	url: "freesound.org/s/854830"
+	authors: "qubodup",
+-yannsauvin credit()
+	url: "freesound.org/s/816782"
+	authors: "YannSauvin",

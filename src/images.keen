@@ -1,0 +1,538 @@
+import
+	game-backend/renderer
+	grid/bounded-grid
+	grid/geometry
+	keen/io/duration
+	./credit
+	./game/game-types
+	./util/more-grid-utils
+
+image-id enum
+	basement
+	bathroom
+	beams
+	bedroom
+	big-slug
+	big-ice-slug
+	blocks
+	block-overlay
+	burn-up
+	compass
+	foyer
+	garden
+	harley
+	harley-dialog
+	hazards
+	items
+	kitchen
+	player
+	player-dialog
+	shower
+	signs
+	slug-dialog
+	small-slug
+	smoke
+	sparkler
+	splash
+	the-end-easy
+	the-end-normal
+	the-end-hard
+
+show string(a image-id) = to to::symbol a
+
+image-authors string set()
+	all-authors map members::image-id[], it.credit
+credit credit(a image-id)
+	match a
+	as basement
+		andy
+	as bathroom
+		andy
+	as beams
+		andy
+	as bedroom
+		andy
+	as big-slug
+		andy
+	as big-ice-slug
+		andy
+	as block-overlay
+		andy
+	as blocks
+		andy
+	as burn-up
+		url: "opengameart.org/content/fire-smoke-animations"
+		authors: "Reactorcore",
+	as compass
+		andy
+	as foyer
+		andy
+	as garden
+		url: "opengameart.org/content/pumpkin-garden-tiles"
+		authors: "NettySvit",
+	as harley
+		andy
+	as harley-dialog
+		andy
+	as hazards
+		andy
+	as items
+		andy
+	as kitchen
+		andy
+	as player
+		andy
+	as player-dialog
+		andy
+	as shower
+		url: "opengameart.org/content/rain-1"
+		authors: "gmason",
+	as signs
+		andy
+	as slug-dialog
+		andy
+	as small-slug
+		andy
+	as smoke
+		andy
+	as sparkler
+		andy
+	as splash
+		url: "https://opengameart.org/content/splash-effect-32x32"
+		authors: "Jesse McCarthy",
+	as the-end-easy
+		andy
+	as the-end-normal
+		andy
+	as the-end-hard
+		andy
+-andy credit()
+	url: "keen.foo"
+	authors: "Andy Hanson",
+
+-image-config record
+	tile-size nat-size
+	size nat-size
+-area-tiles nat16(a image-config)
+	to area a.size
+-size-pixels nat-size(a image-config)
+	a.size * a.tile-size
+
+image-path string(a image-id)
+	"images/{a}.png"
+image-size nat-size(a image-id)
+	size-pixels image-config a
+
+-image-config image-config(image image-id)
+	match image
+	as basement
+		tile-size: 32.square, size: (3, 1)
+	as bathroom
+		tile-size: 32.square, size: (3, 1)
+	as bedroom
+		tile-size: 32.square, size: (3, 1)
+	as beams
+		tile-size: 32.square, size: (4, 4)
+	as big-slug
+		tile-size: 32.square, size: (4, 8)
+	as big-ice-slug
+		tile-size: 32.square, size: (4, 8)
+	as blocks
+		tile-size: 32.square, size: (4, 3)
+	as block-overlay
+		tile-size: 32.square, size: (4, 2)
+	as burn-up
+		tile-size: 20.square, size: (17, 1)
+	as compass
+		tile-size: 32.square, size: (2, 4)
+	as foyer
+		tile-size: 32.square, size: (3, 1)
+	as garden
+		tile-size: 32.square, size: (3, 1)
+	as harley
+		tile-size: 32.square, size: (4, 3)
+	as harley-dialog
+		tile-size: 128.square, size: (2, 1)
+	as hazards
+		tile-size: 32.square, size: (4, 5)
+	as items
+		tile-size: 32.square, size: (4, 7)
+	as kitchen
+		tile-size: 32.square, size: (3, 1)
+	as player
+		tile-size: 32.square, size: (4, 5)
+	as player-dialog
+		tile-size: 128.square, size: (2, 3)
+	as shower
+		tile-size: (1480, 960), size: (1, 1)
+	as signs
+		tile-size: 32.square, size: (4, 2)
+	as slug-dialog
+		tile-size: 128.square, size: (5, 7)
+	as small-slug
+		tile-size: 32.square, size: (4, 25)
+	as smoke
+		tile-size: 16.square, size: (2, 2)
+	as sparkler
+		tile-size: 32.square, size: (4, 1)
+	as splash
+		tile-size: 32.square, size: (4, 1)
+	as the-end-easy
+		tile-size: (1600, 900), size: (1, 1)
+	as the-end-normal
+		tile-size: (1600, 900), size: (1, 1)
+	as the-end-hard
+		tile-size: (1600, 900), size: (1, 1)
+
+subscript image-and-region(image image-id, index nat16)
+	config = image-config image
+	assert index < config.area-tiles
+	image: image.to
+	source:
+		x = index % config.size.width
+		y = index / config.size.width
+		left: x * config.tile-size.height
+		top: y * config.tile-size.width
+		width: config.tile-size.width
+		height: config.tile-size.height
+subscript image-and-region[](image image-id, indices nat16 range)
+	map indices, image[it]
+
+shower image-and-region()
+	shower.to, left: 0, top: 0, width: 1480, height: 960
+
+directional-warp image-and-region(dir dir4)
+	signs[dir.to]
+stairs image-and-region()
+	signs[4]
+puzzle-win-switch image-and-region()
+	signs[5]
+
+slimy image-and-region() = hazards[0]
+valve image-and-region() = hazards[1]
+breakable-wall image-and-region() = hazards[2]
+pillow image-and-region() = hazards[3]
+active-fire image-and-region() = hazards[4]
+potential-fire image-and-region() = hazards[5]
+active-flood image-and-region() = hazards[6]
+potential-flood image-and-region() = hazards[7]
+frozen-in-ice image-and-region() = hazards[9]
+throwable image-and-region() = hazards[12]
+selected image-and-region() = hazards[13]
+lit-bomb-image image-and-region(kind bomb-kind)
+	hazards[16 + kind.to]
+breadcrumb image-and-region() = hazards[19]
+
+beam-line animation(kind beam-kind)
+	match kind
+	as ice
+		beams[0 .. 4], 1.seconds
+	as soda
+		beams[8 .. 12], 1.seconds
+beam-end animation(kind beam-kind)
+	match kind
+	as ice
+		beams[4 .. 8], 1.seconds
+	as soda
+		beams[12 .. 16], 1.seconds
+
+tile-at-pos image-and-region(a game, pos grid-pos)
+	# Use 1 as the default tile since this is the wall tile
+	index = if a.tile-map.bounds[pos] then a.tile-map.tiles[pos] else 1
+	a.area.tiles-image[index]
+-tiles-image image-id(a area)
+	match a
+	as backyard then garden
+	as basement then basement
+	as bathroom then bathroom
+	as bedroom then bedroom
+	as foyer then foyer
+	as garden then garden
+	as kitchen then kitchen
+
+item-image image-and-region(a basic-item)
+	index nat16 = match a
+	as cookie
+		0
+	as soda
+		1
+	as lemon
+		2
+	as soap
+		3
+	as smoke-bomb
+		4
+	as sleep-bomb
+		5
+	as pepper-bomb
+		6
+	as perfume
+		7
+	as hare-plush
+		8
+	as sparkler
+		9
+	as napkin
+		10
+	as ice-soda
+		11
+	items[index]
+missing-item-image image-and-region()
+	items[26]
+crown image-and-region()
+	items[27]
+
+equipment-image image-and-region(a equipment)
+	index nat16 = match a
+	as bag0
+		20
+	as bag1
+		20
+	as breadcrumbs
+		21
+	as compass
+		22
+	as glove
+		23
+	as monocle
+		24
+	items[index]
+
+compass-target enum(door, harley, slug-any, slug-new, stairs, treasure)
+compass-icon image-and-region(a compass-target)
+	compass[a.to]
+compass-background image-and-region()
+	compass[6]
+compass-cover image-and-region()
+	compass[7]
+
+flashlight-part-image image-and-region(a flashlight-part)
+	index nat16 = match a
+	as flashlight-shell
+		16
+	as flashlight-bulb
+		17
+	as flashlight-battery
+		18
+	items[index]
+
+harley-animation animation(dir dir4, is-walking bool)
+	if is-walking
+		frames: harley[dir.to], harley[dir.to + 4]
+		duration: harley-move-duration
+	else
+		harley[dir.to],
+harley-move-duration duration()
+	seconds 1/3
+harley-stuck-animation animation()
+	frames: harley[8 .. 10]
+	duration: seconds 1/2
+harley-slug-on-face image-and-region()
+	harley[10]
+
+player-throw-animation animation(dir dir4)
+	frames: player[8 + dir.to],
+	duration: 0.5.seconds
+player-animation animation(a player, is-walking bool)
+	index nat8 = if is-slipped a
+		16
+	elif is-sleeping a
+		17 + a.is-holding-pillow.to
+	elif is-holding-pillow a
+		12 + a.dir.to
+	else
+		a.dir.to
+	if index < 4 and is-walking
+		frames: player[index], player[index + 4]
+		duration: player-move-duration
+	else
+		player[index],
+player-move-duration duration()
+	seconds 1/4
+
+big-slug-head image-and-region(dir dir4, flags_ slug-flags, is-main-head bool, sees-hare bool, stops-chasing bool)
+	which nat16 = if flags_[sleeping]
+		16
+	elif flags_[dizzy]
+		20
+	elif not is-main-head
+		12
+	elif sees-hare
+		4
+	elif stops-chasing
+		8
+	(if flags_[ice] then big-ice-slug else big-slug)[which + dir.to]
+big-slug-straight-middle image-and-region(flags_ slug-flags, dir dir4)
+	(if flags_[ice] then big-ice-slug else big-slug)[24 + dir.to]
+big-slug-curved-middle image-and-region(flags_ slug-flags, kind curve-kind)
+	which nat16 = match kind
+	as north-to-east then 1
+	as east-to-south then 2
+	as south-to-west then 3
+	as west-to-north then 0
+	as north-to-west then 2
+	as west-to-south then 1
+	as south-to-east then 0
+	as east-to-north then 3
+	(if flags_[ice] then big-ice-slug else big-slug)[28 + which]
+
+slug-move-duration duration()
+	(1/3).seconds
+slug-as-item image-and-region()
+	(small-slug-animation north, sleeping, false, false, false).frames[0]
+small-slug-animation animation(dir dir4, flags_ slug-flags, sees-hare bool, stops-chasing bool, is-moving bool)
+	group nat8 = if flags_[bull]
+		20
+	elif flags_[spits-soda]
+		40
+	elif flags_[ice]
+		60
+	elif flags_[looks-like-cookie]
+		80
+	offset nat8 = if sees-hare
+		8 + dir.to
+	elif stops-chasing
+		12 + dir.to
+	elif is-moving
+		# The slug may now logically be in the sleeping state, but use the walking sprite until it's fully in position
+		dir.to
+	elif flags_[sleeping]
+		if flags_[holding-doll] then 17 else 16
+	elif flags_[dizzy]
+		18
+	else
+		dir.to
+	image = small-slug[group + offset]
+	if offset < 4 and is-moving
+		frames: image, small-slug[group + offset + 4]
+		duration: slug-move-duration
+	else
+		image,
+
+smoke-image image-and-region(kind smoke-kind)
+	smoke[kind.to::nat16]
+
+max-blocks nat16()
+	area-tiles image-config blocks
+block-image image-and-region(block block)
+	blocks[block.color]
+
+block-tunnel-overlay image-and-region(dir dir4)
+	block-overlay[dir.to]
+block-lit image-and-region()
+	block-overlay[4]
+
+dialog-image-region image-and-region(who dialog-who)
+	match who
+	as big-slug
+		slug-dialog[25]
+	as big-slug-dizzy
+		slug-dialog[26]
+	as big-slug-waking-up
+		slug-dialog[27]
+	as big-slug-frozen
+		slug-dialog[28]
+	as big-slug-wow
+		slug-dialog[29]
+	as big-ice-slug
+		slug-dialog[30]
+	as big-ice-slug-dizzy
+		slug-dialog[31]
+	as big-ice-slug-waking-up
+		slug-dialog[32]
+	as big-ice-slug-wow
+		slug-dialog[34]
+	as bull-slug
+		slug-dialog[5]
+	as bull-slug-dizzy
+		slug-dialog[6]
+	as bull-slug-frozen
+		slug-dialog[8]
+	as bull-slug-waking-up
+		slug-dialog[7]
+	as bull-slug-wow
+		slug-dialog[9]
+	as cookie-slug
+		slug-dialog[20]
+	as cookie-slug-dizzy
+		slug-dialog[21]
+	as cookie-slug-waking-up
+		slug-dialog[22]
+	as cookie-slug-frozen
+		slug-dialog[23]
+	as cookie-slug-wow
+		slug-dialog[24]
+	as harley
+		harley-dialog[0]
+	as harley-aah
+		harley-dialog[1]
+	as ice-slug
+		slug-dialog[15]
+	as ice-slug-dizzy
+		slug-dialog[16]
+	as ice-slug-waking-up
+		slug-dialog[17]
+	as ice-slug-wow
+		slug-dialog[19]
+	as player
+		player-dialog[0]
+	as player-aah
+		player-dialog[1]
+	as player-crying
+		player-dialog[2]
+	as player-sleepy
+		player-dialog[3]
+	as slug
+		slug-dialog[0]
+	as slug-dizzy
+		slug-dialog[1]
+	as slug-waking-up
+		slug-dialog[2]
+	as slug-frozen
+		slug-dialog[3]
+	as slug-wow
+		slug-dialog[4]
+	as soda-slug
+		slug-dialog[10]
+	as soda-slug-dizzy
+		slug-dialog[11]
+	as soda-slug-waking-up
+		slug-dialog[12]
+	as soda-slug-frozen
+		slug-dialog[13]
+	as soda-slug-wow
+		slug-dialog[14]
+dialog-player-monocle-overlay image-and-region()
+	player-dialog[4]
+
+animation record -new
+	frames image-and-region[]
+	duration duration
+	duration-per-frame duration
+-new animation(frames image-and-region[], duration duration)
+	frames.size isnt 0
+	frames, duration, duration / frames.size.to
+new animation(frame image-and-region)
+	(frame,), forever, forever
+
+burn-up-animation animation()
+	whole-image-animation burn-up, 0.6.seconds
+
+splash-animation animation()
+	whole-image-animation splash, 0.6.seconds
+
+sparkler-animation animation()
+	whole-image-animation sparkler, 0.3.seconds
+
+the-end image-and-region(difficulty difficulty)
+	match difficulty
+	as easy
+		the-end-easy[0]
+	as normal
+		the-end-normal[0]
+	as hard
+		the-end-hard[0]
+
+-whole-image-animation animation(image image-id, duration duration)
+	frames: for i in image.image-config.area-tiles then image[i]
+	duration: duration

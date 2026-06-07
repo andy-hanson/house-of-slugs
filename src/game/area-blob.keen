@@ -1,0 +1,58 @@
+import
+	grid/geometry
+	grid/grid-set
+	grid/util/more-geometry
+	grid/util/reachability
+	keen/math/vec
+	keen/random/random
+	keen/random/util
+	../util/util
+
+make-blob grid-set(required-points grid-set) random
+	make-blob required-points, ()
+make-blob grid-set(initial-required-points grid-set, excluded grid-set) random
+	assert initial-required-points.size >= 2
+	fixed-required-points grid-set = for x in initial-required-points
+		if excluded[x]
+			only-where! x.neighbors4, {not excluded[it]}
+		else
+			x
+	required-points grid-set = if fixed-required-points.size == 2
+		p0, p1 = only2! fixed-required-points
+		diff = (p1 - p0) / 4
+		center = p0 + diff
+		- p0
+		- p1
+		- center + diff.rotate-right
+		- center + diff.rotate-left
+	else
+		fixed-required-points
+	forbid overlaps excluded, required-points
+	initial-hull = convex-hull required-points
+	hull = blobbify-convex-hull (map initial-hull, it.to), 2
+	res = ((filled-in-convex-hull map hull, it.to) - excluded) & required-points.bounds
+	assert is-contiguous res
+	assert contains-all res, required-points
+	res
+
+| {initial} is a convex hull in clockwise order.
+| Returns a new convex hull fully containing the original that is blobbier.
+-blobbify-convex-hull vec2-32[](initial vec2-32[], min-line-length float32) random
+	res mut = initial
+	until
+		next = blobbify-convex-hull-once initial, min-line-length
+		if next.size == res.size
+			res
+		else
+			res := next
+			()
+-blobbify-convex-hull-once vec2-32[](initial vec2-32[], min-line-length float32) random
+	min-length-squared = min-line-length ** 2
+	for* index, p0 in with-index initial
+		p1 = initial[if index == initial.size - 1 then 0 else index + 1]
+		diff = p1 - p0
+		if diff.length-squared > min-length-squared
+			- p0
+			- p0 + diff * (random 0.33::float32 .. 0.67) + diff.rotate-left * (random 0.33)
+		else
+			- p0

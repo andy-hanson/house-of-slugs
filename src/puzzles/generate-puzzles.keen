@@ -1,0 +1,95 @@
+import
+	grid/geometry
+	grid/grid-set
+	keen/io/file
+	keen/parse
+	keen/parallel
+	keen/random/random
+	keen/random/sfc
+	keen/random/util
+	../util/perf
+	../util/util
+	../images
+	../game/areas
+	../game/game-types
+	./make-puzzle
+	./puzzle-solver
+
+main void() global
+	enable-perf
+	ensure-directory "bin"
+	write-file "bin/puzzles", to-kid make-generated-puzzles
+
+puzzle-getter record mut
+	-random random
+	-difficulty difficulty
+	-puzzles generated-puzzles-for-area
+puzzle-getter puzzle-getter
+	seed nat64
+	area area
+	difficulty difficulty
+	all-puzzles-string string
+do
+	random: sfc32 seed
+	difficulty: difficulty
+	puzzles: (to::generated-puzzles parse kid, all-puzzles-string)[area]!
+subscript blocks-puzzle(a puzzle-getter, placement site-placement)
+	the random = a.random
+	all = a.puzzles[placement]!
+	n-per-difficulty = all.size / members::difficulty[].size
+	d = to::nat a.difficulty
+	all[d * n-per-difficulty .. d * n-per-difficulty + 1].random.puzzle
+
+generated-puzzles alias
+	make-puzzle-result[][site-placement][area]
+generated-puzzles-for-area alias
+	make-puzzle-result[][site-placement]
+
+-make-generated-puzzles generated-puzzles()
+	for area in members::area[]
+		do with in measure-performance "puzzles for {area}"
+		area, map-optionally area.area-config.layout.sites, of site
+			match site.kind
+			as area
+				()
+			as babeki
+				()
+			as puzzle-layout
+				puzzles = puzzles-for-layout site.kind
+				# Note: You can't compare puzzles with different features by step count.
+				# Barebones puzzles with no features tend to be the hardest.
+				# Pillows inflate the step count but the puzzles tend to be easier.
+				log "{area} {site.placement}: {puzzles[0].steps} to {puzzles[end - 1].steps} steps"
+				site.placement, puzzles
+
+-puzzles-for-layout make-puzzle-result[](layout puzzle-layout)
+	n-to-discard = n-to-discard layout
+	results make-puzzle-result set = for i in parallel 0 .. n-to-discard + n-to-keep
+		make-random-puzzle i, layout
+	(sort::make-puzzle-result[] results.to::make-puzzle-result[], it.steps)[n-to-discard .. end].to
+
+# Discard the very easiest tests, which typically just have you walking straight to the goal
+-n-to-discard nat(layout puzzle-layout)
+	# It seems that puzzles with pillows or lights tend to be easy
+	if layout.features[pillows | lit-blocks] then 24 else 12
+-n-to-keep nat() = 36
+
+-make-random-puzzle make-puzzle-result(seed nat64, layout puzzle-layout)
+	features = layout.features
+	make-blocks-puzzle
+		seed: seed
+		options:
+			space: layout.puzzle-tiles
+			player-initial-position: only-where! layout.entrance.neighbors4, layout.puzzle-tiles[it]
+			goal: layout.goal
+			positions-near-valves: filter-that-neighbor layout.puzzle-tiles, layout.valves
+			tunnels: layout.features[tunnels]
+		add-fire-and-flood: if features[fire]
+			if features[flood] then mixed else fire-only
+		else
+			forbid features[flood]
+			none
+		add-pillows: features[pillows]
+		add-tunnels: features[tunnels]
+		blocks-may-be-lit: features[lit-blocks]
+		max-blocks: max-blocks

@@ -1,0 +1,649 @@
+import
+	grid/geometry
+	keen/col/enum-map
+	./game-types
+	../../tiles/backyard.tmj as backyard-tmj string
+	../../tiles/basement.tmj as basement-tmj string
+	../../tiles/basement.tsj as basement-tsj string
+	../../tiles/bedroom.tmj as bedroom-tmj string
+	../../tiles/bedroom.tsj as bedroom-tsj string
+	../../tiles/bathroom.tmj as bathroom-tmj string
+	../../tiles/bathroom.tsj as bathroom-tsj string
+	../../tiles/foyer.tmj as foyer-tmj string
+	../../tiles/foyer.tsj as foyer-tsj string
+	../../tiles/garden.tmj as garden-tmj string
+	../../tiles/garden.tsj as garden-tsj string
+	../../tiles/kitchen.tmj as kitchen-tmj string
+	../../tiles/kitchen.tsj as kitchen-tsj string
+
+area-config area-config(area area)
+	match area
+	as backyard
+		layout:
+			origin-warp: basement
+			length: 48
+			sites:
+				-
+					placement: beginning
+					kind: puzzle
+						layout: quote
+							-2, 1 to 3, 8
+							┌─────┐
+							│ RRR │
+							│  C  │
+							│•••••│
+							│•••••│
+							│•• ••│
+							│•••••│
+							│•••••│
+							└─────┘
+						rewards: n-of 3, backyard-random-item
+						features: pillows | tunnels
+						exit: 0, 8
+				-
+					placement: farthest
+					kind: puzzle
+						layout: quote
+							-2, 1 to 3, 8
+							┌─────┐
+							│ RRR │
+							│ CCC │
+							│•••••│
+							│•••••│
+							│•••••│
+							│•••••│
+							│•••••│
+							└─────┘
+						rewards: alice.reward-slug, reward-harley, bob.reward-slug
+						features: ()
+		map:
+			tsj: garden-tsj
+			tmj: backyard-tmj
+			maze-config:
+				n-safe-tiles: 6
+				non-ground-is-wall: false
+		npcs:
+			- east, slug-of-beginnings
+			- west, slug-of-adversity
+		tutorial-slugs: ()
+		sprinkle:
+			items: ()
+			slugs: garden-slugs
+			fire-and-flood: 0
+			pillows:
+				- easy, 9
+				- normal, 6
+				- hard, 3
+		player-gravity-radius: 20
+		visibility: perfect
+	as basement
+		layout:
+			origin-warp: foyer
+			length: 72
+			sites:
+				-
+					placement: beginning
+					kind: puzzle
+						layout: quote
+							-1, 1 to 2, 6
+							┌───┐
+							│RRR│
+							│ C │
+							│•••│
+							│•••│
+							│•••│
+							└───┘
+						rewards: basement-random-item, sparkler, basement-random-item
+						features: lit-blocks
+						exit: 0, 6
+				-
+					placement: midway-left
+					kind: puzzle
+						layout: quote
+							-2, 1 to 3, 8
+							┌─────┐
+							│RRRRR│
+							│R C R│
+							│ ••• │
+							│ ••• │
+							│ ••• │
+							│ ••• │
+							│ ••• │
+							└─────┘
+						rewards:
+							- basement-random-item
+							- sparkler
+							- basement-random-item
+							- sparkler
+							- basement-random-item
+							- sparkler
+							- basement-random-item
+						features: lit-blocks
+				-
+					placement: midway-right
+					kind: puzzle
+						layout: quote
+							-2, 1 to 3, 8
+							┌─────┐
+							│RRRRR│
+							│R C R│
+							│ ••• │
+							│•••••│
+							│•• ••│
+							│•••••│
+							│ ••• │
+							└─────┘
+						rewards:
+							- basement-random-item
+							- sparkler
+							- basement-random-item
+							- sparkler
+							- basement-random-item
+							- sparkler
+							- basement-random-item
+						features: lit-blocks
+				-
+					placement: farthest
+					kind: puzzle
+						layout: quote
+							-1, 1 to 2, 12
+							┌───┐
+							│ R │
+							│ C │
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							└───┘
+						rewards:
+							- reward-warp backyard
+						features: lit-blocks
+		map:
+			tsj: basement-tsj
+			tmj: basement-tmj
+			maze-config:
+				n-safe-tiles: 10
+				non-ground-is-wall: true
+		npcs:
+			- east, shadow
+			- west, umbra
+		tutorial-slugs: ()
+		sprinkle:
+			items:
+				-- members::basic-item[]
+				-- n-of 15, sparkler
+			slugs:
+				- plain-slug andy
+				- bull-slug dandelion
+				- bull-slug echo
+				- cookie-slug flavio
+				- cookie-slug holly
+				- ice-lit-up-slug freezy
+				- ice-lit-up-slug icy
+				- big-slug hustle-and-bustle, 8
+				- big-ice-bomb-slug bismarck-and-fargo, 6, pepper
+				- bomb-slug sylvester, plain
+				- bomb-slug wendy, sleep
+				- bomb-slug zanzibar, pepper
+			fire-and-flood: ()
+			pillows:
+				- easy, 3
+				- normal, 2
+				- hard, 1
+		player-gravity-radius: 20
+		visibility: basement
+	as bathroom
+		layout:
+			origin-warp: foyer
+			length: 64
+			sites:
+				-
+					placement: beginning
+					kind: puzzle
+						layout: quote
+							-3, 0 to 2, 7
+							┌─────┐
+							│RRR  │
+							│C  V │
+							│•••• │
+							│•••• │
+							│•••• │
+							│••••V│
+							│V    │
+							└─────┘
+						rewards: soap, bathroom-random-item, soap
+						features: fire | flood
+						exit: -4, 6
+				-
+					placement: midway-left
+					kind: puzzle
+						layout: quote
+							-6, 1 to 2, 5
+							┌────────┐
+							│R ••••• │
+							│R ••••• │
+							│R ••V•• │
+							│RC•• ••V│
+							└────────┘
+						rewards:
+							- reward-equipment false
+							-- n-of 3, bathroom-random-item
+						features: fire | flood
+				-
+					placement: midway-right
+					kind: puzzle
+						layout: quote
+							-1, 1 to 7, 7
+							┌────────┐
+							│ V      │
+							│ •••••CR│
+							│ ••••• R│
+							│ •••  RR│
+							│ •• RRR │
+							│V••     │
+							└────────┘
+						rewards:
+							- bathroom-random-item
+							- soap
+							- bathroom-random-item
+							- soap
+							- bathroom-random-item
+							- soap
+							- reward-equipment true
+						features: fire | flood
+				-
+					placement: farthest
+					kind: puzzle
+						layout: quote
+							-4, 1 to 2, 8
+							┌──────┐
+							│RRRR  │
+							│C     │
+							│••••• │
+							│••••• │
+							│••V•• │
+							│••••• │
+							│•••••V│
+							└──────┘
+						rewards:
+							- reward-flashlight-part
+							-- n-of 3, bathroom-random-item
+						features: fire | flood
+		map:
+			tsj: bathroom-tsj
+			tmj: bathroom-tmj
+			maze-config:
+				n-safe-tiles: 4
+				non-ground-is-wall: false
+		npcs:
+			- east, scrubby
+		tutorial-slugs: ()
+		sprinkle:
+			items:
+				-- n-of 8, soap
+				-- n-of 2, perfume
+				-- n-of 2, soda
+				-- n-of 2, smoke-bomb
+			slugs:
+				- bomb-slug dudley, plain
+				- ice-slug chilly
+				- ice-slug frosty
+				- ice-slug slushy
+				- ice-slug snowy
+				- ice-slug snowflake
+				- plain-slug oozy
+				- plain-slug soggy
+				- plain-slug slippy
+				- plain-slug slithy
+				- plain-slug oyl
+				- plain-slug sludgy
+			fire-and-flood: 30
+			pillows: ()
+		player-gravity-radius: 18
+		visibility: perfect
+	as bedroom
+		layout:
+			origin-warp: foyer
+			length: 64
+			sites:
+				-
+					placement: beginning
+					kind: puzzle
+						layout: quote
+							-2, 1 to 3, 7
+							┌─────┐
+							│ RRR │
+							│  C  │
+							│•••••│
+							│•••••│
+							│•••••│
+							│•••••│
+							└─────┘
+						rewards: bedroom-random-item, sleep-bomb, bedroom-random-item
+						features: pillows
+						exit: 0, 7
+				-
+					placement: midway-left
+					kind: puzzle
+						layout: quote
+							-6, 0 to 0, 5
+							┌──────┐
+							│ •••••│
+							│ •••••│
+							│ •• ••│
+							│ C  ••│
+							│RRRR •│
+							└──────┘
+						rewards: bedroom-random-item, false.reward-equipment, bedroom-random-item, bedroom-random-item
+						features: pillows
+				-
+					placement: midway-right
+					kind: puzzle
+						layout: quote
+							1, 0 to 7, 5
+							┌──────┐
+							│••••CR│
+							│•••• R│
+							│•••• R│
+							│•••• R│
+							│••••  │
+							└──────┘
+						rewards:
+							-- n-of 3, bedroom-random-item
+							- reward-equipment true
+						features: pillows
+				-
+					placement: farthest
+					kind: puzzle
+						layout: quote
+							-3, 1 to 4, 7
+							┌───────┐
+							│ RRRRR │
+							│   C   │
+							│•••••••│
+							│•••••••│
+							│•••••••│
+							│•••••••│
+							└───────┘
+						rewards:
+							-- n-of 2, bedroom-random-item
+							- reward-flashlight-part
+							-- n-of 2, bedroom-random-item
+						features: pillows
+		map:
+			tsj: bedroom-tsj
+			tmj: bedroom-tmj
+			maze-config:
+				n-safe-tiles: 4
+				non-ground-is-wall: false
+		npcs:
+			- east, sleepy
+			- west, snoozy
+		tutorial-slugs: ()
+		sprinkle:
+			items:
+				# No {doll} here, since the sleeping-slugs have them
+				-- n-of 4, sleep-bomb
+				-- n-of 2, cookie
+			slugs:
+				- plain-slug cushy
+				- plain-slug dozer
+				- plain-slug dreamer
+				- plain-slug drowsy
+				- bomb-slug lax, sleep
+				- bomb-slug nod, sleep
+				- bomb-slug plush, sleep
+				- bomb-slug slacker, sleep
+				- sleeping-slug sleeping-beauty
+				- sleeping-slug sloth
+				- sleeping-slug snory
+				- sleeping-slug wooly
+			fire-and-flood: 0
+			pillows:
+				- easy, 24
+				- normal, 18
+				- hard, 12
+		player-gravity-radius: 24
+		visibility: bedroom
+	as foyer
+		layout:
+			origin-warp: garden
+			length: 72
+			sites:
+				-
+					placement: beginning
+					kind: puzzle
+						layout: quote
+							-1, 1 to 3, 6
+							┌────┐
+							│RRRR│
+							│  C │
+							│••••│
+							│••••│
+							│••••│
+							└────┘
+						rewards: n-of 4, foyer-random-item
+						features: ()
+						exit: 0, 6
+				-
+					placement: midway-left
+					kind: babeki 0
+				-
+					placement: midway-right
+					kind: babeki 2
+				-
+					placement: midway-middle
+					kind: puzzle
+						layout: quote
+							-1, 1 to 2, 10
+							┌───┐
+							│ R │
+							│ C │
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							└───┘
+						rewards:
+							- reward-warp basement
+						features: ()
+				-
+					placement: farthest
+					kind: babeki 1
+		map:
+			tsj: foyer-tsj
+			tmj: foyer-tmj
+			maze-config:
+				n-safe-tiles: 8
+				non-ground-is-wall: false
+		npcs:
+			- south, slug-of-wisdom
+			- north, slug-of-returning
+			- west, slug-of-puzzles
+		tutorial-slugs: ()
+		sprinkle:
+			items:
+				-- n-of 6, cookie
+				-- n-of 12, smoke-bomb
+			slugs:
+				- plain-slug boggy
+				- plain-slug glooper
+				- plain-slug gloppy
+				- plain-slug gluey
+				- bull-slug bullton
+				- bull-slug greaser
+				- bull-slug gummy
+				- bull-slug gunky
+				- bomb-slug pyro, plain
+				- bomb-slug soppy, plain
+				- bomb-slug smokey, plain
+				- bomb-slug wormy, plain
+		player-gravity-radius: 30
+		visibility: perfect
+	as garden
+		layout:
+			origin-warp: ()
+			length: 64
+			sites:
+				-
+					placement: farthest
+					kind: foyer
+		map:
+			tsj: garden-tsj
+			tmj: garden-tmj
+			maze-config:
+				n-safe-tiles: 6
+				non-ground-is-wall: false
+		npcs:
+			- south, slug-of-adversity
+			- north, slug-of-beginnings
+			- east, slug-of-conquest
+		tutorial-slugs:
+			- east, alice
+			- west, bob
+		sprinkle:
+			items: n-of 4, cookie
+			slugs: garden-slugs
+		player-gravity-radius: 18
+		visibility: perfect
+	as kitchen
+		layout:
+			origin-warp: foyer
+			length: 72
+			sites:
+				-
+					placement: beginning
+					kind: puzzle
+						layout: quote
+							-1, 1 to 2, 8
+							┌───┐
+							│RRR│
+							│ C │
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							│•••│
+							└───┘
+						rewards: soda, lemon, pepper-bomb
+						features: fire | tunnels
+						exit: 0, 8
+				-
+					placement: midway-left
+					kind: puzzle
+						layout: quote
+							-4, 1 to 1, 7
+							┌─────┐
+							│RRRRR│
+							│C    │
+							│•••••│
+							│•••••│
+							│•••••│
+							│•••••│
+							└─────┘
+						rewards:
+							- reward-equipment false
+							-- n-of 4, kitchen-random-item
+						features: fire | tunnels
+				-
+					placement: midway-right
+					kind: puzzle
+						layout: quote
+							0, 1 to 5, 7
+							┌─────┐
+							│•••CR│
+							│••• R│
+							│••• R│
+							│••• R│
+							│••• R│
+							│••• R│
+							└─────┘
+						rewards:
+							-- n-of 5, kitchen-random-item
+							- reward-equipment true
+						features: fire | tunnels
+				-
+					placement: farthest
+					kind: puzzle
+						layout: quote
+							0, 1 to 5, 8
+							┌─────┐
+							│RRRRR│
+							│    C│
+							│•••••│
+							│•••••│
+							│•••••│
+							│•••••│
+							│•••••│
+							└─────┘
+						rewards:
+							-- n-of 4, kitchen-random-item
+							- reward-flashlight-part
+						features: fire | tunnels
+		map:
+			tsj: kitchen-tsj
+			tmj: kitchen-tmj
+			maze-config:
+				n-safe-tiles: 4
+				non-ground-is-wall: false
+		npcs:
+			- west, pan
+		tutorial-slugs: ()
+		sprinkle:
+			items:
+				-- n-of 2, cookie
+				-- n-of 2, soda
+				-- n-of 2, lemon
+				-- n-of 2, pepper-bomb
+			slugs:
+				- cookie-slug chip
+				- cookie-slug cookie
+				- cookie-slug oatmeal
+				- bomb-slug cayenne, pepper
+				- bomb-slug habanero, pepper
+				- bomb-slug serrano, pepper
+				- soda-slug cola
+				- soda-slug fizzy
+				- soda-slug poppy
+				- big-slug ed-and-ned, 6
+				- big-slug buck-and-penny, 8
+				- big-slug miles-and-pounds, 10
+		player-gravity-radius: 20
+		visibility: perfect
+
+-backyard-random-item reward-random-item()
+	# Omit smoke-bomb (too week), napkin (too powerful)
+	# Omit sparkler since it isn't useful outside of the basement
+	choices: cookie, hare-plush, ice-soda, lemon, perfume, pepper-bomb, soap, soda, sleep-bomb
+-basement-random-item reward-random-item()
+	# Also omitting sparkelr here, since those are plentiful as non-random items
+	backyard-random-item
+-bathroom-random-item reward-random-item()
+	# Omit soap since those are plentiful as non-random items
+	choices: ice-soda, perfume, smoke-bomb
+-bedroom-random-item reward-random-item()
+	choices: cookie, hare-plush, sleep-bomb
+-foyer-random-item reward-random-item()
+	choices: cookie, smoke-bomb
+-kitchen-random-item reward-random-item()
+	choices: cookie, lemon, pepper-bomb, soda
+
+-garden-slugs slug-config[]()
+	- plain-slug slugette
+	- plain-slug sluggo
+	- plain-slug sluggy
+	- plain-slug slugson
+	- plain-slug slug-jr
+	- plain-slug slugsly
+	- plain-slug slug-sr
+	- plain-slug slug-x
+	- plain-slug slugicus
+	- plain-slug sluggus

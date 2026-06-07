@@ -1,0 +1,32 @@
+import
+	./credit
+
+music-id enum
+	chase
+	credits
+	foyer
+	garden
+
+music-path string(a music-id)
+	"music/{to::symbol a}.ogg"
+
+music-authors string set()
+	all-authors map members::music-id[], it.credit
+credit credit(a music-id)
+	match a
+	as chase
+		andy
+	as credits
+		andy
+	as foyer
+		drazorleaf
+	as garden
+		drazorleaf
+
+-andy credit()
+	url: "keen.foo"
+	authors: "Andy Hanson",
+
+-drazorleaf credit()
+	url: "buymeacoffee.com/drazorleaf"
+	authors: "David Karsten",

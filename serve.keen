@@ -1,0 +1,21 @@
+#!/usr/bin/env keen
+import
+	keen/io/file
+	com/sun/net/httpserver/SimpleFileServer
+	com/sun/net/httpserver/SimpleFileServer$OutputLevel
+	com/sun/net/httpserver/HttpServer
+	java/lang/Thread
+	java/net/InetSocketAddress
+	java/nio/file/Path
+	java/nio/file/Paths
+
+main void() global, java
+	do trusted
+	port int32 = 8080
+	addr InetSocketAddress = port,
+	path Path = get "/{current-directory}", ()
+	server HttpServer = createFileServer addr, path, INFO
+	start server
+	finally stop server, 0
+	log "Serving at localhost:{port}/"
+	join currentThread # waits forever

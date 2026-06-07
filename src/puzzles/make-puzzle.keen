@@ -1,0 +1,156 @@
+import
+	grid/geometry
+	grid/grid-set
+	grid/grid-set-set
+	grid/mut-grid-set
+	grid/util/random-util
+	grid/util/reachability
+	keen/random/random
+	keen/random/sfc
+	keen/random/util
+	../util/perf
+	../game/game-types
+	./puzzle-solver
+
+make-blocks-puzzle-options record
+	seed nat64
+	options block-puzzle-options
+	| WARN: If this is set, a valve should be near the player-initial-position
+	add-fire-and-flood fire-and-flood
+	add-pillows bool
+	add-tunnels bool
+	blocks-may-be-lit bool
+	max-blocks nat16
+space grid-set(a make-blocks-puzzle-options) = a.options.space
+player-initial-position grid-pos(a make-blocks-puzzle-options) = a.options.player-initial-position
+positions-near-valves grid-set(a make-blocks-puzzle-options) = a.options.positions-near-valves
+-goal-set grid-set(a make-blocks-puzzle-options)
+	match goal = a.options.goal
+	as grid-pos
+		goal,
+	as light-every-block
+		()
+
+make-puzzle-result record
+	steps nat
+	puzzle blocks-puzzle
+make-blocks-puzzle make-puzzle-result(options make-blocks-puzzle-options)
+	start = perf-now
+	finally end-make-blocks-puzzle start
+	the random = sfc32 options.seed
+	solver blocks-puzzle-solver = options.options,
+	min-difficulty = match options.options.goal
+	as grid-pos
+		options.space.size
+	as light-every-block
+		options.space.size / 2
+	max-difficulty nat = 100
+	until
+		res = make-one-blocks-puzzle options, solver
+		if res.steps >= min-difficulty and res.steps <= max-difficulty
+			res
+
+-make-one-blocks-puzzle make-puzzle-result(options make-blocks-puzzle-options, solver blocks-puzzle-solver) random
+	# Don't have fire/flood near a valve since we don't have any code to handle the player setting theirself on fire
+	puzzle mut blocks-puzzle = initial-puzzle options
+	is-fire-only = options.add-fire-and-flood == fire-only
+	until solution-size = is-solvable solver, puzzle
+		if any puzzle.pillows and random-chance 1, 3
+			puzzle := modify puzzle, pillows, {b remove-random! it}
+		elif is-fire-only and any puzzle.fire and (puzzle.blocks.size == 1 or puzzle.fire.size > 2 and random)
+			puzzle := modify puzzle, fire, {b remove-random! it}
+		elif puzzle.blocks.size == 0
+			assert options.add-fire-and-flood == mixed
+			# Use an empty puzzle -- will be discarded as too easy
+			puzzle := set puzzle, fire + flood, ((), ())
+		else
+			pos, new-blocks = remove-random-block-tile puzzle.blocks
+			puzzle := set puzzle, blocks, new-blocks
+			if options.add-pillows
+				puzzle := modify puzzle, pillows, it | pos
+	while puzzle.blocks.size > options.max-blocks
+		puzzle := modify puzzle, blocks, {remove-random-block it}
+	steps: solution-size, puzzle: puzzle
+
+-initial-puzzle blocks-puzzle(options make-blocks-puzzle-options) random
+	blocks, pillows = initial-blocks options
+	ff fire-flood = match options.add-fire-and-flood
+	as none
+		()
+	as mixed
+		random-fire-and-flood-tiles options.space - options.positions-near-valves - options.player-initial-position
+	as fire-only
+		(random-fire-tiles options.space - options.player-initial-position - options.goal-set), ()
+	blocks: blocks
+	pillows: pillows
+	fire: ff.fire
+	flood: ff.flood
+
+-fire-flood record
+	fire grid-set
+	flood grid-set
+-new fire-flood() = (), ()
+-random-fire-and-flood-tiles fire-flood(space grid-set) random
+	n-to-add = space.size / 3
+	assert n-to-add >= 2
+	first-fire, first-flood = only2! randoms-without-replacement space, 2
+	res mut fire-flood =(first-fire,), (first-flood,)
+	for i in n-to-add - 2
+		other = if is-even i then res.flood else res.fire
+		res := modify res, (if is-even i then fire else flood), of x
+			can-add = if random
+				# Randomly grow an existing cluster
+				(x.neighbors-set - other) & space
+			else
+				# Start a new one
+				space - x - other
+			if any can-add
+				x | random can-add
+			else
+				x
+	res
+
+-random-fire-tiles grid-set(space grid-set) random
+	fire mut grid-set = ()
+	for _ in space.size / 3
+		fire |:= random space - fire
+	fire
+
+-chance bool(numerator nat, denominator nat) random
+	(random 0 .. denominator) < numerator
+
+-initial-blocks (grid-set-set, grid-set)(options make-blocks-puzzle-options) random
+	# options.add-pillows, options.add-tunnels, options.blocks-may-be-lit
+	blocks grid-set mut[] = ()
+	pillows mut-grid-set = ()
+	remaining mut-grid-set = to options.space - options.player-initial-position
+	while any remaining
+		pos = remove-random remaining
+		if options.add-pillows and chance 1, 3
+			pillows ~= pos
+		elif chance 2, 3 and i = random-index-where blocks, {it.size < max-block-size and is-next-to pos, it}
+			blocks[i] |:= pos
+		else
+			blocks ~= pos,
+	- to move-to::grid-set[] blocks
+	- move-to pillows
+-max-block-size nat8() = 4
+
+-remove-random-block grid-set-set(a grid-set-set) random
+	remove-set a, random a.size
+
+-remove-random-block-tile (grid-pos, grid-set-set)(blocks grid-set-set) random
+	which-block = random blocks.size
+	block = blocks[which-block]
+	if block.size == 1
+		- only! block
+		- remove-set blocks, which-block
+	else
+		pos, new-block = remove-random-pos-leave-contiguous block
+		- pos
+		- update-set blocks, which-block, new-block
+
+-remove-random-pos-leave-contiguous (grid-pos, grid-set)(a grid-set) random
+	which-index = random-where! 0::nat32 .. a.size, {is-contiguous without-index a, it}
+	- a[which-index]
+	- without-index a, which-index
