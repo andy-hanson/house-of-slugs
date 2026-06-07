@@ -1,0 +1,746 @@
+import
+	grid/geometry
+	grid/grid-set
+	grid/grid-set-set
+	keen/col/enum-map
+	keen/parse
+	./area-setup-types
+	./game-types
+
+area-config area-config(area area) = area-configs[area]
+area-configs (area, area-config) enum-map()
+	make of area
+		match area
+		as backyard then backyard
+		as basement then basement
+		as bathroom then bathroom
+		as bedroom then bedroom
+		as foyer then foyer
+		as garden then garden
+		as kitchen then kitchen
+
+-backyard area-config()
+	layout:
+		origin-warp: basement
+		length: 48
+		sites:
+			-
+				placement: farthest
+				kind: puzzle
+					layout: quote
+						-2, 1 to 3, 8
+						 RRR
+						 CCC
+						•••••
+						•••••
+						•••••
+						•••••
+						•••••
+					rewards: alice.reward-slug, reward-harley, bob.reward-slug
+	map:
+		initial:
+			ground: parse grid-set, quote
+				-2, 0 to 3, 4
+				  •
+				•••••
+				•••••
+				  •
+			safe: parse grid-set, quote
+				-2, 1 to 3, 4
+				  •
+				 •••
+				•••••
+			exit: 0, 4
+			entities:
+				- slug slug-of-beginnings, npc, (-2, 2), east
+				- slug slug-of-adversity, npc, (2, 2), west
+			puzzle: ()
+		maze-safe-tiles: adjust-safe-tiles 5
+		maze: extra-hard-maze-config
+	sprinkle:
+		items: ()
+		slugs: garden-slugs
+		pillows:
+			- easy, 4
+			- normal, 3
+			- hard, 2
+	player-gravity-radius: 24
+	visibility: perfect
+
+-basement area-config()
+	layout:
+		origin-warp: foyer
+		length: 72
+		sites:
+			-
+				placement: beginning
+				kind: puzzle
+					layout: quote
+						-1, 1 to 2, 7
+						RRR
+						 C
+						•••
+						•••
+						•••
+						•••
+					rewards: basement-random-item, sparkler, basement-random-item
+					features: lit-blocks
+					exit: 0, 7
+			-
+				placement: midway-left
+				kind: puzzle
+					layout: quote
+						-4, 1 to 5, 9
+						   RRR
+						   RRR
+						    C
+						•••••••••
+						 •••••••
+						  •••••
+						   •••
+						    •
+					rewards:
+						-- n-of 3, basement-random-item
+						-- n-of 3, sparkler
+					features: lit-blocks
+			-
+				placement: midway-right
+				kind: puzzle
+					layout: quote
+						-2, 1 to 3, 9
+						 RRR
+						 RRR
+						  C
+						 •••
+						•••••
+						•• ••
+						•••••
+						 •••
+					rewards:
+						-- n-of 3, basement-random-item
+						-- n-of 3, sparkler
+					features: lit-blocks
+			-
+				placement: farthest
+				kind: puzzle
+					layout: quote
+						-2, 1 to 3, 10
+						  R
+						  C
+						 •••
+						 •••
+						•••••
+						•••••
+						•••••
+						 •••
+						 •••
+					rewards:
+						- reward-warp backyard
+					features: lit-blocks
+	map:
+		initial:
+			ground: parse grid-set, quote
+				-2, 0 to 3, 13
+				  •
+				  •••
+				  •
+				•••
+				  •
+				  •
+				  •
+				  •
+				  •
+				  •
+				  •
+				  •
+				  •
+			safe:
+				- -1, 9
+				- 1, 11
+			exit: 0, 13
+			entities:
+				- slug shadow, npc, (-2, 9), east
+				- slug umbra, npc, (2, 11), west
+			puzzle: ()
+		maze-safe-tiles: adjust-safe-tiles 10
+		maze: usual-maze-config
+		non-ground-is-wall: true
+	sprinkle:
+		items:
+			-- basement-item-choices
+			-- n-of 15, sparkler
+		slugs:
+			- andy
+			- bismarck-and-fargo
+			- dandelion
+			- echo
+			- flavio
+			- freezy
+			- ginger
+			- hustle-and-bustle
+			- icy
+			- sylvester
+			- wendy
+			- zanzibar
+		pillows:
+			- easy, 3
+			- normal, 2
+			- hard, 1
+	player-gravity-radius: 20
+	visibility: basement
+
+-bathroom area-config()
+	layout:
+		origin-warp: foyer
+		length: 72
+		sites:
+			-
+				placement: beginning
+				kind: puzzle
+					layout: quote
+						-1, 1 to 5, 7
+						   RRR
+						    C
+						  •••
+						 ••••
+						 ••••
+						V•••
+					rewards: perfume, ice-soda, soap
+					features: fire | flood
+					exit: 3, 7
+			-
+				placement: midway-left
+				kind: puzzle
+					layout: quote
+						-1, 1 to 9, 6
+						 •••  ••CR
+						 ••••V•• R
+						 ••••••• R
+						 •• •••• R
+						V••  •••
+					rewards:
+						-- n-of 3, bathroom-random-item
+						- reward-equipment false
+					features: fire | flood
+			-
+				placement: midway-right
+				kind: puzzle
+					layout: quote
+						-1, 1 to 7, 6
+						   •••CR
+						  •••• R
+						 ••••  R
+						 •••   R
+						V••
+					rewards:
+						-- n-of 3, bathroom-random-item
+						- reward-equipment true
+					features: fire | flood
+			-
+				placement: farthest
+				kind: puzzle
+					layout: quote
+						-1, 1 to 5, 8
+						  RRRR
+						     C
+						 •••••
+						 •••••
+						 ••V••
+						 •••••
+						V•••••
+					rewards:
+						-- n-of 3, bathroom-random-item
+						- reward-flashlight-part
+					features: fire | flood
+	map:
+		initial:
+			ground: parse grid-set, quote
+				-1, 0 to 3, 5
+				 •
+				 •••
+				 • •
+				••••
+				 •
+			safe: (0, 1),
+			exit: 0, 5
+			entities:
+				- slug scrubby, npc, (-1, 1), east
+			puzzle:
+				placement: tutorial
+				layout:
+					puzzle-tiles:
+						rect grid-rect = bottom-left: (0, 1), top-right: (3, 4)
+						rect.to::grid-set - (1, 2)::grid-pos
+					entrance: 0, 0
+					breakable-walls: (0, 4),
+					valves: (1, 2),
+				entities:
+					fire: (2, 1),
+					flood: (2, 3),
+		maze-safe-tiles: adjust-safe-tiles 5
+		maze: usual-maze-config
+	sprinkle:
+		items:
+			-- n-of 3, soap
+			- soda
+			- bomb-smoke
+			- perfume
+		slugs:
+			- chilly
+			- dudley
+			- frosty
+			- oozy
+			- oyl
+			- slippy
+			- slithy
+			- sludgy
+			- slushy
+			- snowflake
+			- snowy
+			- soggy
+		# Note: Having fewer of these actually tends to make the game harder,
+		# since they are useful for splooshing pursuing slugs.
+		fire-and-flood: 16
+		extra-valves:
+			- easy, 6
+			- normal, 4
+			- hard, 2
+	player-gravity-radius: 18
+	visibility: perfect
+
+-bedroom area-config()
+	layout:
+		origin-warp: foyer
+		length: 72
+		sites:
+			-
+				placement: beginning
+				kind: puzzle
+					layout: quote
+						-1, 1 to 2, 8
+						RRR
+						 C
+						•••
+						•••
+						•••
+						•••
+						•••
+					rewards: bedroom-random-item, bomb-sleep, bedroom-random-item
+					features: pillows
+					exit: 0, 8
+			-
+				placement: midway-left
+				kind: puzzle
+					layout: quote
+						0, 1 to 5, 7
+						R
+						RC•••
+						R •••
+						R  ••
+						 ••••
+						•••••
+					rewards:
+						-- n-of 2, bedroom-random-item
+						- reward-equipment false
+						- bedroom-random-item
+					features: pillows
+			-
+				placement: midway-right
+				kind: puzzle
+					layout: quote
+						-2, 1 to 3, 7
+						RRRRR
+						  C
+						•••••
+						 •••
+						•••••
+						 •••
+					rewards:
+						-- n-of 2, bedroom-random-item
+						- reward-equipment true
+						-- n-of 2, bedroom-random-item
+					features: pillows
+			-
+				placement: farthest
+				kind: puzzle
+					layout: quote
+						0, 1 to 4, 8
+						RRRR
+						   C
+						••••
+						••••
+						••••
+						••••
+						••••
+					rewards:
+						-- n-of 3, bedroom-random-item
+						- reward-flashlight-part
+					features: pillows
+	map:
+		initial:
+			ground: parse grid-set, quote
+				-2, 0 to 3, 3
+				  •
+				•••••
+				  •
+			safe: parse grid-set, quote
+				-1, 1 to 2, 3
+				 •
+				•••
+			exit: 0, 3
+			entities:
+				- slug sleepy, npc, (-2, 1), east
+				- slug snoozy, npc, (2, 1), west
+			puzzle: ()
+		maze-safe-tiles: adjust-safe-tiles 8
+		maze: usual-maze-config
+	sprinkle:
+		items:
+			# No {hare-plush} here, since the sleeping slugs have them
+			-- n-of 4, bomb-sleep
+			-- n-of 4, cookie
+		slugs:
+			- cushy
+			- dozer
+			- dreamer
+			- drowsy
+			- lax
+			- nod
+			- plush
+			- slacker
+			- sleeping-beauty
+			- sloth
+			- snory
+			- wild-and-wooly
+		pillows:
+			- easy, 24
+			- normal, 18
+			- hard, 12
+	player-gravity-radius: 24
+	visibility: bedroom
+
+-foyer area-config()
+	layout:
+		origin-warp: garden
+		length: 76
+		sites:
+			-
+				placement: beginning
+				kind: puzzle
+					layout: quote
+						-1, 1 to 3, 6
+						 RRR
+						  C
+						••••
+						••••
+						••••
+					rewards: n-of 3, foyer-random-item
+					exit: 1, 6
+			-
+				placement: midway-left
+				kind: babeki 0
+			-
+				placement: midway-right
+				kind: babeki 2
+			-
+				placement: midway-middle
+				kind: puzzle
+					layout: quote
+						-1, 1 to 2, 10
+						 R
+						 C
+						•••
+						•••
+						•••
+						•••
+						•••
+						•••
+						•••
+					rewards:
+						- reward-warp basement
+			-
+				placement: farthest
+				kind: babeki 1
+	map:
+		initial:
+			ground: parse grid-set, quote
+				-2, 0 to 2, 5
+				  •
+				• ••
+				•••
+				• •
+				  •
+			safe: parse grid-set, quote
+				-2, 0 to 1, 5
+				  •
+				  •
+				•••
+				  •
+				  •
+			exit: 0, 5
+			entities:
+				- slug slug-of-returning, npc, (-2, 1), north
+				- slug slug-of-wisdom, npc, (-2, 3), south
+				- slug slug-of-puzzles, npc, (1, 3), west
+			puzzle: ()
+		maze-safe-tiles: adjust-safe-tiles 8
+		maze: usual-maze-config
+	sprinkle:
+		items:
+			-- n-of 5, cookie
+			-- n-of 9, bomb-smoke
+		slugs:
+			- boggy
+			- bullton
+			- glooper
+			- gloppy
+			- gluey
+			- greaser
+			- gummy
+			- gunky
+			- pyro
+			- smokey
+			- soppy
+			- wormy
+	player-gravity-radius: 30
+	visibility: perfect
+
+-garden area-config()
+	layout:
+		origin-warp: ()
+		length: 64
+		sites:
+			-
+				placement: farthest
+				kind: foyer
+	map:
+		initial:
+			ground: parse grid-set, quote
+				-13, 0 to 2, 9
+				      •
+				      •
+				      •      •
+				 •••••••••••••
+				 •           •
+				 •        • •••
+				•••••••••••••••
+				       •  • •••
+				            •••
+			safe:
+				- -3, 2
+				- -6, 1
+				- -9, 3
+				- -12, 2
+				- -12, 5
+				- -3, 5
+				- 0, 6
+			exit: 0, 7
+			entities:
+				- slug slug-of-beginnings, npc, (-3, 1), north
+				- slug slug-of-adversity, npc, (-3, 3), south
+				- slug slug-of-conquest, npc, (-13, 2), east
+				- slug alice, waiting-for-player, (-11, 2), east
+				- slug bob, waiting-for-player, (-4, 5), west
+				- cookie (-12, 1)
+				- cookie (-13, 3)
+				- cookie (-11, 4)
+				- cookie (-12, 6)
+				- ground-item (-2, 6), napkin
+				- cookie (-1, 6)
+				- cookie (1, 5)
+				- cookie (1, 6)
+			puzzle:
+				# Simple 'puzzle' where you press a switch to open the gate around the tutorial
+				placement: tutorial
+				layout:
+					puzzle-tiles: (0, 5),
+					entrance: -1, 5
+					breakable-walls: (0, 4),
+				entities: ()
+		maze-safe-tiles: adjust-safe-tiles 6
+		maze: usual-maze-config
+	sprinkle:
+		items: n-of 6, cookie
+		slugs: garden-slugs
+	player-gravity-radius: 24
+	visibility: perfect
+
+-cookie ground-item(pos grid-pos)
+	pos, cookie
+
+-kitchen area-config()
+	layout:
+		origin-warp: foyer
+		length: 72
+		sites:
+			-
+				placement: beginning
+				kind: puzzle
+					layout: quote
+						-1, 1 to 2, 8
+						RRR
+						 C
+						•••
+						•••
+						•••
+						•••
+						•••
+					rewards: soda, lemon, bomb-pepper
+					features: fire | tunnels
+					exit: 0, 8
+			-
+				placement: midway-left
+				kind: puzzle
+					layout: quote
+						0, 1 to 4, 9
+						RRRR
+						   C
+						   •
+						  ••
+						 •••
+						••••
+						••••
+						••••
+					rewards:
+						-- n-of 3, kitchen-random-item
+						- reward-equipment false
+					features: fire | tunnels
+			-
+				placement: midway-right
+				kind: puzzle
+					layout: quote
+						0, 1 to 8, 6
+						 •••••CR
+						•••••• R
+						••••   R
+						•••    R
+						•••
+					rewards:
+						-- n-of 3, kitchen-random-item
+						- reward-equipment true
+					features: fire | tunnels
+			-
+				placement: farthest
+				kind: puzzle
+					layout: quote
+						0, 1 to 5, 7
+						 RRRR
+						    C
+						•••••
+						•••••
+						•••••
+						•••••
+					rewards:
+						-- n-of 3, kitchen-random-item
+						- reward-flashlight-part
+					features: fire | tunnels
+	map:
+		initial:
+			ground: parse grid-set, quote
+				0, 0 to 2, 9
+				•
+				•
+				•
+				•
+				•
+				•
+				•
+				••
+				•
+			safe: (0, 1),
+			exit: 0, 9
+			entities:
+				- slug pan, npc, (1, 1), west
+			puzzle:
+				placement: tutorial
+				layout:
+					puzzle-tiles: (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7)
+					entrance: 0, 0
+					breakable-walls: (0, 8),
+					features: tunnels
+				entities:
+					blocks:
+						- (0, 2), (0, 3)
+					fire: (0, 5), (0, 6)
+		maze-safe-tiles: adjust-safe-tiles 5
+		maze: usual-maze-config
+	sprinkle:
+		items:
+			-- n-of 2, soda
+			-- n-of 2, bomb-pepper
+			- lemon
+			- cookie
+		slugs:
+			- buck-and-penny
+			- cayenne
+			- chip
+			- cola
+			- cookie
+			- ed-and-ned
+			- fizzy
+			- habanero
+			- miles-and-pounds
+			- oatmeal
+			- poppy
+			- serrano
+	player-gravity-radius: 22
+	visibility: perfect
+
+-usual-maze-config (difficulty, maze-config) enum-map()
+	# The maze fills in dead ends first, then connections.
+	# So the connectivity of the maze is connections - dead-ends
+	make of difficulty
+		dead-ends:
+			match difficulty
+			as easy then 42 / 96
+			as normal then 44 / 96
+			as hard then 45 / 96
+		connections: 46 / 96
+
+| The backyard is in two segments: First you traverse it, then you trap Harley.
+| Since it is small, we want the maze to be extra hard to compensate so the first phase is not too easy.
+| Then in the second phase, having more dead ends makes it easier to trap Harley.
+-extra-hard-maze-config (difficulty, maze-config) enum-map()
+	make of difficulty
+		dead-ends:
+			match difficulty
+			as easy then 88 / 192
+			as normal then 90 / 192
+			as hard then 91 / 192
+		connections: 92 / 192
+
+-basement-random-item reward-random-item()
+	# Also omitting sparkler here, since those are plentiful as non-random items
+	choices: basement-item-choices
+-basement-item-choices basic-item[]()
+	# Omit smoke-bomb (too weak), napkin (too powerful)
+	# Omit sparkler since it isn't useful outside of the basement
+	cookie, hazel-plush, ice-soda, lemon, perfume, bomb-pepper, soap, soda, bomb-sleep
+-bathroom-random-item reward-random-item()
+	# Omit soap since those are plentiful as non-random items
+	choices: ice-soda, perfume, bomb-smoke, soap
+-bedroom-random-item reward-random-item()
+	choices: cookie, hazel-plush, bomb-sleep
+-foyer-random-item reward-random-item()
+	choices: cookie, bomb-smoke
+-kitchen-random-item reward-random-item()
+	choices: cookie, lemon, bomb-pepper, soda
+
+-garden-slugs slug-id set()
+	- slugette
+	- sluggo
+	- sluggus
+	- sluggy
+	- slugicus
+	- slug-jr
+	- slugsly
+	- slugson
+	- slug-sr
+	- slug-x
+
+-adjust-safe-tiles (difficulty, nat) enum-map(hard nat)
+	make of x
+		match x
+		as easy then hard * 2
+		as normal then hard * 3 / 2
+		as hard then hard

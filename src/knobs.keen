@@ -1,0 +1,141 @@
+| Global gameplay knobs.
+| Area-specific knobs are in areas.keen
+import
+	grid/geometry
+	keen/col/enum-set
+	keen/io/duration
+	keen/math/geom2d/circle
+	keen/math/vec
+	keen/random/random
+	keen/random/util
+	./game-types
+
+inventory-is-full bool(a game)
+	a.inventory.size == a.max-inventory
+max-inventory nat8(a game)
+	4 + (if a.equipment[bag0] then 2) + (if a.equipment[bag1] then 2)
+
+player-visibility-distance float32(has-monocle bool)
+	if has-monocle then 5.5 else 4.5
+player-throw-distance float32(has-glove bool)
+	# Ensure the max of this doesn't exceed the min of visibility, otherwise there are throwable positions offscreen
+	if has-glove then 4.5 else 3.5
+
+slug-vision-kind enum(hare, item)
+| Use a longer vision when chasing something so the slug doesn't easily forget
+slug-vision float32(kind slug-vision-kind, is-chasing bool)
+	match kind
+	as hare
+		if is-chasing then 7 else 5
+	as item
+		if is-chasing then 8 else 6
+| This also isn't too important, should just be sufficient given {slug-vision}.
+slug-max-path nat8()
+	12
+| When there is something in the way (like a slug plush), the slug will give up once you are this far away.
+slug-max-path-with-blockers nat8()
+	6
+
+| For sleep / spicy, this needs to be less than {player-throw-distance} (or you bomb yourself)
+bomb-smoke-radius float32(kind bomb-kind)
+	match kind
+	as smoke
+		5
+	else
+		3
+| This is the lifetime of the center of the smoke, edges will fade quicker
+bomb-smoke-max-lifetime nat8()
+	16
+| This value isn't too important, just needs to be sufficiently high
+slugs-leave-smoke-max-path nat8()
+	8
+
+player-crying-due-to-pepper-bomb-turns nat8()
+	16
+player-crying-vision float32 range()
+	1 .. 8
+player-frozen-turns nat8(area area, shower bool)
+	if shower
+		1
+	elif area == bathroom
+		3
+	else
+		# Make the basement ice slugs a bit easier since no shower is possible
+		2
+player-perfume-turns nat8()
+	16
+player-sleeping-turns nat8()
+	7
+player-slipped-turns nat8()
+	1
+player-sodad-turns nat8()
+	4
+
+slug-dizzy-turns nat8()
+	8
+slug-frozen-turns nat8(shower bool)
+	if shower then 2 else 10
+slug-sleeping-turns nat8()
+	12
+
+slug-drop-bomb-turns nat8()
+	16
+slug-dropped-bomb-turns-until-boom nat8()
+	6
+| Note: If this is higher, the player can throw a bomb to get a slug to turn around, then collect it again,
+| so it's basically infinite invincibility
+thrown-bomb-turns-until-boom nat8()
+	1
+
+| Turns until the slug can use soda / ice beam again
+beam-recovery-turns nat8()
+	16
+
+dark-basement-dialog-steps (nat8, nat8, nat8, nat8)()
+	2, 4, 6, 7
+
+slip-on-slime-chance nat()
+	6
+
+min-distance-for-fire-and-flood nat16()
+	5
+
+add-extra-items basic-item[](base basic-item[], difficulty difficulty, flashlight-parts nat) random
+	extra nat = (2 - (min flashlight-parts, 2)) + match difficulty
+	as easy then 2
+	as normal then 1
+	as hard then 0
+	assert extra <= 7
+	-- base
+	-- if any base then randoms-without-replacement base, extra
+	-- if difficulty == easy and any base
+		- napkin
+
+adjust-player-gravity-radius float32(hard float32, difficulty difficulty)
+	match difficulty
+	as easy
+		hard * 2
+	as normal
+		hard * 3 / 2
+	as hard
+		hard
+
+sparkler-max-turns nat8()
+	32
+lit-region circle32(sparkler sparkler)
+	center: sparkler.pos.to + (0.5, 0.5)
+	radius: 1 + 8 * sparkler.turns-remaining.to / sparkler-max-turns.to
+
+throw-animation-duration duration()
+	0.5.seconds
+
+| Sounds within this distance are at max volume
+sound-base-distance float32()
+	5
+| Sounds this far to the left/right will be fully panned
+pan-max-distance float32()
+	10
+
+| Soda or ice beam only go this far
+max-beam nat8()
+	8

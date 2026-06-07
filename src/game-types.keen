@@ -1,0 +1,925 @@
+import
+	game-backend/audio
+	grid/bounded-grid
+	grid/geometry
+	grid/grid-entities
+	grid/grid-path
+	grid/grid-set
+	grid/sparse-grid
+	keen/col/enum-set
+	keen/col/enum-map
+	keen/io/duration
+	./music
+	./sounds
+
+difficulty enum(easy, normal, hard)
+show string(a difficulty)
+	match a
+	as easy then "Easy"
+	as normal then "Normal"
+	as hard then "Hard"
+
+game record
+	persistent-state persistent-state
+	last-play-time duration
+	area-state area-state
+	ui-state ui-state
+
+slug-config record
+	size nat8
+	flags_ slug-flags
+slug-config slug-config(id slug-id)
+	match id
+	as andy or alice or bob or boggy or cushy or dreamer or drowsy or glooper or gloppy or gluey or oozy or oyl
+		1, ()
+	as pan or scrubby or shadow or sleepy or snoozy or slug-of-adversity or slug-of-beginnings or slug-of-conquest
+		1, ()
+	as slug-of-puzzles or slug-of-returning or slug-of-wisdom or soggy or slippy or sludgy or slugette or sluggo
+		1, ()
+	as sluggus or sluggy or slugicus or slug-jr or slugson or slugsly or slug-sr or slug-x or umbra
+		1, ()
+	as bismarck-and-fargo
+		6, ice | drops-pepper-bombs
+	as buck-and-penny
+		8, ()
+	as cayenne
+		1, bull | drops-pepper-bombs
+	as chilly or frosty or slushy or snowy or snowflake
+		1, ice
+	as chip or cookie or flavio or oatmeal
+		1, looks-like-cookie | sleeping
+	as cola or fizzy or ginger or poppy
+		1, spits-soda
+	as bullton or dandelion or dozer or echo or greaser or gummy or gunky or slithy
+		1, bull
+	as dudley or pyro or soppy or smokey or sylvester or wormy
+		1, drops-smoke-bombs
+	as ed-and-ned
+		6, ()
+	as freezy or icy
+		1, ice
+	as habanero or serrano or zanzibar
+		1, drops-pepper-bombs
+	as hustle-and-bustle
+		8, bull
+	as lax or nod or plush or slacker or sleeping-beauty or sloth or snory or wendy
+		1, drops-sleep-bombs
+	as miles-and-pounds
+		10, ()
+	as wild-and-wooly
+		4, ()
+spits-soda bool(slug slug-id)
+	slug.slug-config.flags_[spits-soda]
+starts-sleeping bool(slug slug-id)
+	slug.slug-config.flags_[sleeping]
+| A big slug may rarely be smaller if there is no room
+desired-size nat8(slug slug-id)
+	slug.slug-config.size
+
+ui-state union
+	ui-state-dialog
+	ui-state-initial
+	ui-state-normal
+	ui-state-item-select
+	ui-state-throw-select
+	ui-state-paused
+	ui-state-confirmation
+	ui-state-the-end
+ui-state-dialog record(remaining dialog-entry[])
+ui-state-initial record
+ui-state-normal record
+ui-state-item-select record(selected-item-index nat8)
+ui-state-throw-select record(selected-item-index nat8, selected-throw-position grid-pos)
+ui-state-paused record
+	active paused-active
+	next-difficulty difficulty
+	should-reset no-yes
+	kind paused-kind
+no-yes enum(no, yes)
+toggle no-yes(a no-yes)
+	match a
+	as no then yes
+	as yes then no
+show string(a no-yes)
+	match a
+	as no then "No"
+	as yes then "Yes"
+paused-active enum(difficulty, reset)
+ui-state-confirmation record(kind confirmation-kind, confirmed no-yes)
+confirmation-kind union(difficulty, confirm-reset)
+confirm-reset record
+paused-kind enum
+	main
+	slugs-list
+	credits
+	explain-controls
+ui-state-the-end record
+	kind the-end-kind
+the-end-kind enum(credits, stats, slugs-list, none)
+
+dialog-entry record
+	| The effect happens after continuing the dialog, before the next {dialog-entry}
+	who dialog-who
+	content string
+	max-scale-text string = standard-max-scale-text
+	sound sound-id? = ()
+	post-effect dialog-effect? = ()
+	delay-sound duration = ()
+-standard-max-scale-text string()
+	"Text should be about this long."
+dialog-who enum
+	big-bull-slug
+	big-bull-slug-dizzy
+	big-bull-slug-frozen
+	big-bull-slug-waking-up
+	big-bull-slug-wow
+	big-slug
+	big-slug-dizzy
+	big-slug-frozen
+	big-slug-waking-up
+	big-slug-wow
+	big-ice-slug
+	big-ice-slug-dizzy
+	big-ice-slug-waking-up
+	big-ice-slug-wow
+	bull-slug
+	bull-slug-dizzy
+	bull-slug-frozen
+	bull-slug-waking-up
+	bull-slug-wow
+	cookie-slug
+	cookie-slug-dizzy
+	cookie-slug-frozen
+	cookie-slug-waking-up
+	cookie-slug-wow
+	harley
+	harley-aah
+	ice-slug
+	ice-slug-dizzy
+	ice-slug-waking-up
+	ice-slug-wow
+	player
+	player-aah
+	player-crying
+	player-sleepy
+	slug
+	slug-dizzy
+	slug-frozen
+	slug-waking-up
+	slug-wow
+	soda-slug
+	soda-slug-dizzy
+	soda-slug-frozen
+	soda-slug-waking-up
+	soda-slug-wow
+is-player bool(a dialog-who)
+	match a
+	as player or player-aah or player-crying or player-sleepy then true
+	else then false
+dialog-effect union
+	lose
+	music-id
+	pause-music
+	set-harley-state
+	the-end
+	unpause-music
+	use-napkin
+lose record
+set-harley-state record(state harley-state)
+the-end record
+use-napkin record(slugged-by slug)
+
+selected-item-index nat8(a game)
+	match ui = a.ui-state
+	as ui-state-item-select
+		ui.selected-item-index
+	as ui-state-throw-select
+		ui.selected-item-index
+	else
+		throw unreachable
+selected-item item(a game)
+	a.inventory[selected-item-index a]
+
+| State that gets saved.
+persistent-state record
+	seed nat64
+	| Current difficulty
+	difficulty difficulty
+	lowest-difficulty difficulty
+	prev-area area?
+	cur-area area
+	checkpoint grid-pos?
+	visited-areas area enum-set
+	has-picked-up-items basic-item enum-set
+	| Also tracks the number of times you talked to each slug.
+	| For 100% completion, be sure to talk to every slug 255 times!
+	has-talked-to-slug (slug-id, nat8) enum-map
+	times-talked-to-harley nat8
+	progress-flags progress-flags
+	breadcrumbs (area, grid-set) enum-map
+	solved-puzzles (area, site-placement-or-tutorial set) enum-map
+	equipment equipment enum-set
+	flashlight-parts flashlight-part enum-set
+	inventory item[]
+	play-time duration
+	total-turns nat16
+	times-slugged nat8
+new-game persistent-state(seed nat64)
+	new-game seed, easy
+new-game persistent-state(seed nat64, difficulty difficulty)
+	seed: seed
+	difficulty: difficulty
+	lowest-difficulty: difficulty
+	prev-area: ()
+	cur-area: garden
+	checkpoint: ()
+	visited-areas: garden,
+	has-picked-up-items: ()
+	has-talked-to-slug: ()
+	times-talked-to-harley: ()
+	progress-flags: ()
+	breadcrumbs: ()
+	solved-puzzles: ()
+	equipment: ()
+	flashlight-parts: ()
+	inventory: ()
+	play-time: ()
+	total-turns: ()
+	times-slugged: ()
+flashlight-part enum
+	flashlight-battery
+	flashlight-bulb
+	flashlight-shell
+equipment enum
+	bag0
+	bag1
+	breadcrumbs
+	compass
+	glove
+	monocle
+show string(a equipment)
+	match a
+	as bag0
+		"pocket"
+	as bag1
+		"purse"
+	as breadcrumbs
+		"bag of breadcrumbs"
+	as compass
+		"compass"
+	as glove
+		"glove"
+	as monocle
+		"monocle"
+seed nat64(a game) = a.persistent-state.seed
+difficulty difficulty(a game) = a.persistent-state.difficulty
+lowest-difficulty difficulty(a game) = a.persistent-state.lowest-difficulty
+change-difficulty game(a game, value difficulty)
+	is-beginning = a.visited-areas == (garden,)
+	set a, persistent-state * (difficulty + lowest-difficulty),
+		- value
+		- if is-beginning then value else min a.lowest-difficulty, value
+	# You can't go get a bunch of easy mode items then switch to hard mode
+	then if is-beginning and value > a.difficulty then set inventory, ()
+inventory item[](a game) = get a, inventory
+inventory (game, item[]) lens() = persistent-state * inventory
+area area(a game) = a.persistent-state.cur-area
+checkpoint grid-pos?(a game) = get a, checkpoint
+checkpoint (game, grid-pos?) lens() = persistent-state * checkpoint
+flashlight-parts flashlight-part enum-set(a game) = get a, flashlight-parts
+flashlight-parts (game, flashlight-part enum-set) lens() = persistent-state * flashlight-parts
+equipment equipment enum-set(a game) = get a, equipment
+equipment (game, equipment enum-set) lens() = persistent-state * equipment
+visited-areas area enum-set(a game) = get a, visited-areas
+visited-areas (game, area enum-set) lens() = persistent-state * visited-areas
+has-picked-up-items basic-item enum-set(a game) = get a, has-picked-up-items
+has-picked-up-items (game, basic-item enum-set) lens() = persistent-state * has-picked-up-items
+has-talked-to-slug (slug-id, nat8) enum-map(a game) = get a, has-talked-to-slug
+has-talked-to-slug (game, (slug-id, nat8) enum-map) lens() = persistent-state * has-talked-to-slug
+has-talked-to-slug bool(a game, slug slug-id) = a.has-talked-to-slug[slug] != 0
+times-talked-to-harley nat8(a game) = get a, times-talked-to-harley
+times-talked-to-harley (game, nat8) lens() = persistent-state * times-talked-to-harley
+progress-flags progress-flags(a game) = get a, progress-flags
+progress-flags (game, progress-flags) lens() = persistent-state * progress-flags
+post-game bool(a game)
+	a.progress-flags[post-game]
+breadcrumbs grid-set(a game) = get a, breadcrumbs
+breadcrumbs (game, grid-set) lens()
+	get: of game then game.persistent-state.breadcrumbs[game.area]
+	set: of game, value
+		modify game, persistent-state * breadcrumbs, it ~ (game.area, value)
+add-solved-puzzle game(a game, placement site-placement-or-tutorial)
+	modify a, solved-puzzles-cur-area, it ~ placement
+solved-puzzles-cur-area (game, site-placement-or-tutorial set) lens()
+	computed-lens of game
+		persistent-state * solved-puzzles * lens-for-key game.area
+play-time duration(a game) = get a, play-time
+play-time (game, duration) lens() = persistent-state * play-time
+times-slugged nat8(a game) = get a, times-slugged
+times-slugged (game, nat8) lens() = persistent-state * times-slugged
+total-turns nat16(a game) = get a, total-turns
+total-turns (game, nat16) lens() = persistent-state * total-turns
+
+site-placement-or-tutorial enum
+	beginning
+	midway-left
+	midway-right
+	midway-middle
+	farthest
+	tutorial
+
+area enum
+	backyard
+	basement
+	bathroom
+	bedroom
+	garden
+	foyer
+	kitchen
+show string(a area)
+	a.to::symbol.to
+
+exclusive-entities alias
+	exclusive-entity grid-entities
+
+| State that is reset when you lose
+area-state record
+	tile-map tile-map
+	player player
+	player-gravity-radius float32
+	exclusive-entities exclusive-entities
+	| Values are the number of turns the smoke has left
+	smoke smoke sparse-grid
+	slimy grid-set
+	puzzle-win-switches grid-set
+	puzzles puzzle-info[]
+	shower bool
+	visibility area-visibility
+	music-state area-music-state
+area-visibility enum(perfect, basement, bedroom)
+puzzle-info record
+	placement site-placement-or-tutorial
+	bounds grid-rect
+expanded-bounds grid-rect(a puzzle-info) = expand a.bounds
+tile-map tile-map(a game) = a.area-state.tile-map
+tile-map (game, tile-map) lens() = area-state * tile-map
+exclusive-entities exclusive-entities(a game) = a.area-state.exclusive-entities
+exclusive-entities (game, exclusive-entities) lens() = area-state * exclusive-entities
+player player(a game) = get a, player
+player (game, player) lens() = area-state * player
+player-gravity-radius float32(a game) = a.area-state.player-gravity-radius
+smoke smoke sparse-grid(a game) = get a, smoke
+smoke (game, smoke sparse-grid) lens() = area-state * smoke
+slimy grid-set(a game) = get a, slimy
+slimy (game, grid-set) lens() = area-state * slimy
+puzzle-win-switches grid-set(a game) = get a, puzzle-win-switches
+puzzle-win-switches (game, grid-set) lens() = area-state * puzzle-win-switches
+puzzles puzzle-info[](a game) = get a, puzzles
+puzzles (game, puzzle-info[]) lens() = area-state * puzzles
+shower bool(a game) = get a, shower
+shower (game, bool) lens() = area-state * shower
+visibility area-visibility(a game) = a.area-state.visibility
+music-state area-music-state(a game) = get a, music-state
+music-state (game, area-music-state) lens() = area-state * music-state
+
+area-music-state enum
+	none
+	maze
+	maze-shower
+	puzzle
+
+| Any entity that excludes other entities from its space.
+| The player is usually exclusive, but can travel through certain blocks, so it's handled separately.
+exclusive-entity union
+	block
+	breakable-wall
+	harley
+	sparkler
+	ground-flashlight-part
+	ground-equipment
+	ground-item
+	lit-bomb
+	pillow
+	slug
+	valve
+	warp
+do
+	occupied-space grid-set()
+breakable-wall record(pos grid-pos)
+occupied-space grid-set(a breakable-wall) = a.pos,
+sparkler record(pos grid-pos, turns-remaining nat8)
+occupied-space grid-set(a sparkler) = a.pos,
+occupied-space (exclusive-entity, grid-set) lens()
+	get: it.occupied-space
+	set: of entity, space
+		match entity
+		as block
+			set::block entity, occupied-space, space
+		as breakable-wall
+			set::breakable-wall entity, pos, only! space
+		as harley
+			set::harley entity, pos, only! space
+		as sparkler
+			set::sparkler entity, pos, only! space
+		as ground-flashlight-part
+			set::ground-flashlight-part entity, pos, only! space
+		as ground-equipment
+			set::ground-equipment entity, pos, only! space
+		as ground-item
+			set::ground-item entity, pos, only! space
+		as lit-bomb
+			set::lit-bomb entity, pos, only! space
+		as pillow
+			set::pillow entity, pos, only! space
+		as slug
+			# This is only used for the tutorial slugs, which are all small slugs
+			set::slug entity, positions, (space.only!,)
+		as valve
+			set::valve entity, pos, only! space
+		as warp
+			set::warp entity, pos, only! space
+
+ground-flashlight-part record(pos grid-pos, part flashlight-part)
+occupied-space grid-set(a ground-flashlight-part) = a.pos,
+ground-equipment record(pos grid-pos, equipment equipment)
+occupied-space grid-set(a ground-equipment) = a.pos,
+ground-item record(pos grid-pos, item basic-item)
+occupied-space grid-set(a ground-item) = a.pos,
+lit-bomb record
+	pos grid-pos
+	turns-until-boom nat8
+	max-turns nat8
+	kind bomb-kind
+occupied-space grid-set(a lit-bomb) = a.pos,
+bomb-kind enum(pepper, sleep, smoke)
+to basic-item(a bomb-kind)
+	match a
+	as pepper then bomb-pepper
+	as sleep then bomb-sleep
+	as smoke then bomb-smoke
+to smoke-kind(a bomb-kind)
+	match a
+	as pepper then pepper
+	as sleep then sleep
+	as smoke then plain
+pillow record(pos grid-pos)
+occupied-space grid-set(a pillow) = a.pos,
+valve record(pos grid-pos)
+occupied-space grid-set(a valve) = a.pos,
+warp record
+	pos grid-pos
+	| If present, the player must press in the direction to use the warp. Otherwise it acts instantly.
+	dir dir4?
+	next-area area
+occupied-space grid-set(a warp) = a.pos,
+
+smoke record
+	time-to-live nat8
+	kind smoke-kind
+smoke-kind enum(plain, pepper, perfume, sleep)
+slugs-avoid-smoke bool(a smoke-kind)
+	a == pepper or a == perfume
+
+block record
+	occupied-space grid-set
+	lit block-lit = never-lit
+	| If the block is a tunnel, this stores the ends or it.
+	| This stores the directions pointing *outwards* from the tunnel.
+	| Note: This representation prevents blocks where the tunnel has both ends in the same direction.
+	| This is fine as those aren't interesting for puzzles anyway.
+	| (If the openings are next to each other there's no point, and making them far away requires a huge block.)
+	| Tunnel blocks will always have a tunnel shape (e.g., no squares), so just storing the directions is unambiguous.
+	tunnel (dir4, dir4)? = ()
+do
+	assert try-from-set occupied-space
+block-lit enum(never-lit, unlit, lit)
+toggle block-lit(a block-lit)
+	match a
+	as never-lit then never-lit
+	as unlit then lit
+	as lit then unlit
+as-grid-path grid-path(a block)
+	try-from-set! a.occupied-space
+is-end-of-tunnel dir4?(block block, pos grid-pos)
+	do if block.tunnel
+	assert block.occupied-space[pos]
+	do if next-pos = only neighbors-in block.occupied-space, pos
+	res = assert-exact-dir4 pos - next-pos
+	assert res == block.tunnel.a or res == block.tunnel.b
+	res
+is-end-of-tunnel dir4?(block grid-set, pos grid-pos)
+	assert block[pos]
+	if next-pos = only neighbors-in block, pos
+		assert-exact-dir4 pos - next-pos
+
+progress-flags flags
+	has-been-sleep-bombed
+	has-been-peppered
+	has-been-slugged-in-dark-basement
+	has-recovered-from-pepper
+	has-stepped-on-slimy
+	alice-has-seen-player
+	bob-has-seen-player
+	post-game
+
+harley record
+	state harley-state
+	pos grid-pos
+	dir dir4
+occupied-space grid-set(a harley) = a.pos,
+harley-state enum
+	waiting
+	moving
+	stuck
+	slug-on-face
+
+slug record
+	id slug-id
+	flags_ slug-flags
+	| For a big slug, the main head goes first.
+	positions grid-path
+	| Unused for big slugs (whose direction is determined by the next position)
+	dir dir4
+	chasing slug-chasing?
+	| {max-value} to never recover
+	turns-until-recovery nat8
+	turns-until-beam nat8
+	turns-until-bomb nat8
+do
+	assert any positions
+| This intentionally does not use a unique identifier for the item.
+| So if the slug is chasing a cookie it may switch to a closer one.
+slug-chasing union(basic-item, chasing-player)
+chasing-player record
+slug slug(id slug-id, flags_ slug-flags, position grid-pos, dir dir4)
+	id, flags_, (position,), dir, (), 0, 0, 0
+slug-flags flags
+	dizzy
+	drops-smoke-bombs
+	drops-sleep-bombs
+	drops-pepper-bombs
+	bull
+	frozen
+	| Always paired with {sleeping}
+	holding-hare-plush
+	ice
+	looks-like-cookie
+	| Slug will never move. Dialog is determined by the direction it's facing.
+	npc
+	| Slug won't move until it sees the player
+	waiting-for-player
+	sleeping
+	spits-soda
+	just-woke-up
+drops-bombs bomb-kind?(a slug)
+	drops-bombs a.flags_
+drops-bombs bomb-kind?(a slug-flags)
+	if a[drops-smoke-bombs]
+		smoke
+	elif a[drops-sleep-bombs]
+		sleep
+	elif a[drops-pepper-bombs]
+		pepper
+is-big bool(a slug) = a.positions.size > 1
+is-bull bool(a slug) = a.flags_[bull]
+is-ice bool(a slug) = a.flags_[ice]
+is-npc bool(a slug) = a.flags_[npc]
+is-soda bool(a slug) = a.flags_[spits-soda]
+beam-kind enum(ice, soda)
+fires-beams beam-kind?(a slug)
+	if is-ice a
+		ice
+	elif is-soda a
+		soda
+is-dizzy bool(a slug) = a.flags_[dizzy]
+is-frozen bool(a slug) = a.flags_[frozen]
+is-sleeping bool(a slug) = a.flags_[sleeping]
+is-holding-hare-plush bool(a slug) = a.flags_[holding-hare-plush]
+make-able-to-move slug(a slug)
+	modify a, flags_, it & ~(dizzy | sleeping | frozen | just-woke-up)
+is-chasing-player bool(a slug) = ?chasing-player a.chasing
+looks-like-cookie bool(a slug) = a.flags_[looks-like-cookie]
+is-waiting-for-player bool(a slug) = a.flags_[waiting-for-player]
+is-unable-to-move bool(a slug)
+	is-unable-to-move a.flags_
+is-unable-to-move bool(a slug-flags)
+	a[npc] or a[dizzy] or a[frozen] or a[sleeping] or a[just-woke-up]
+occupied-space grid-set(a slug)
+	a.positions.to
+slug-head record
+	pos grid-pos
+	dir dir4
+| The head that is currently in control
+active-head slug-head(a slug) = a.heads[0]
+| Returns a single head for 1-tile slugs.
+| For long slugs there is a head on both ends. This returns the head in control first, followed by the tail-head.
+heads slug-head[](a slug)
+	if pos = only a.positions
+		- pos, a.dir
+	else
+		- a.positions[0].pos, -a.positions[0].dir-to-next!
+		- a.positions[end - 1].pos, -a.positions[end - 1].dir-to-prev!
+turn-around slug(a slug)
+	if a.positions.size == 1
+		modify a, dir, -it
+	else
+		new-positions grid-path = a.positions.reverse
+		set a, dir + positions, (new-positions[0].dir-to-next!, new-positions)
+
+inventory-grid-size nat-size(max nat8)
+	match max
+	as 4
+		2, 2
+	as 6
+		3, 2
+	as 8
+		4, 2
+	else
+		throw unreachable
+item-grid-pos grid-pos(item-index nat8, max nat8)
+	assert item-index < max
+	# Items begin filling from the top, which has high Y values
+	size = inventory-grid-size max
+	w nat8 = to size.width
+	x: to item-index % w
+	y: to size.height - 1 - item-index / w
+item-index nat8?(item-pos grid-pos, max nat8)
+	size = inventory-grid-size max
+	do if contains size, item-pos
+	y = size.height - 1 - item-pos.y.to::nat16
+	to item-pos.x.to::nat16 + y * size.width
+
+item union(basic-item, slug-id)
+to json(a item)
+	# There is a slug named 'cookie', but they aren't in the backyard so you can't use them as an item
+	match a
+	as basic-item
+		a.to::symbol.to
+	as slug-id
+		a.to::symbol.to
+to item(a json)
+	sym = to::symbol a
+	to::basic-item? sym or to::slug-id? sym else throw deserialize-error "item", a
+basic-item enum
+	bomb-pepper
+	bomb-sleep
+	bomb-smoke
+	cookie
+	hazel-plush
+	ice-soda
+	lemon
+	napkin
+	perfume
+	soap
+	soda
+	sparkler
+
+chaseable-item enum(cookie, hare-plush, lemon)
+to basic-item(a chaseable-item)
+	match a
+	as cookie then cookie
+	as hare-plush then hazel-plush
+	as lemon then lemon
+slugs-go-for-item chaseable-item?(a item)
+	do if basic-item a
+	match a
+	as cookie then cookie
+	as lemon then lemon
+	as hazel-plush then hare-plush
+	else then ()
+is-edible bool(a item)
+	do if basic-item a
+	match a
+	as cookie or lemon then true
+	else then false
+as-bomb bomb-kind?(a item)
+	do if basic-item a
+	match a
+	as bomb-sleep then sleep
+	as bomb-smoke then smoke
+	as bomb-pepper then pepper
+	else then ()
+as-item basic-item(kind bomb-kind)
+	match kind
+	as smoke then bomb-smoke
+	as sleep then bomb-sleep
+	as pepper then bomb-pepper
+
+player record
+	pos grid-pos
+	dir dir4
+	is-holding-pillow bool
+	statuses nat8[player-status]
+player-status enum(aah, crying, frozen, perfume, sleeping, slipped)
+has-status nat8?(a player, status player-status) = a.statuses[status]
+is-aah bool(a player) = has-status a, aah
+is-crying nat8?(a player) = has-status a, crying
+is-frozen bool(a player) = has-status a, frozen
+is-perfumed bool(a player) = has-status a, perfume
+is-sleeping bool(a player) = has-status a, sleeping
+is-slipped bool(a player) = has-status a, slipped
+is-unable-to-move bool(a player) = is-frozen a or is-sleeping a or is-slipped a
+
+tile-id alias
+	nat8
+
+tile-map record
+	tiles tile-id bounded-grid
+	maze-ground-minus-safe grid-set
+	ground grid-set
+	safe grid-set
+	ground-minus-safe grid-set
+	walls grid-set
+	| All potential file tiles. Check {shower} too.
+	fire grid-set
+	| All potential flood tiles. Check {shower} too.
+	flood grid-set
+do
+	forbid overlaps fire, flood
+maze-ground-minus-safe grid-set(a game) = a.tile-map.maze-ground-minus-safe
+ground grid-set(a game) = a.tile-map.ground
+ground-minus-safe grid-set(a game) = a.tile-map.ground-minus-safe
+safe grid-set(a game) = a.tile-map.safe
+walls grid-set(a game) = a.tile-map.walls
+bounds grid-rect(a tile-map) = a.tiles.bounds
+fire (game, grid-set) lens() = tile-map * fire
+flood (game, grid-set) lens() = tile-map * flood
+active-or-potential-fire-or-flood-tiles virtual-grid-set(a game)
+	a.tile-map.fire::virtual-grid-set | a.tile-map.flood
+active-fire-or-flood-tiles grid-set(a game)
+	if a.shower
+		a.tile-map.flood
+	else
+		a.tile-map.fire
+
+slug-id enum
+	alice
+	andy
+	bismarck-and-fargo
+	bob
+	boggy
+	bullton
+	cayenne
+	chilly
+	chip
+	cola
+	cookie
+	cushy
+	dandelion
+	dozer
+	dreamer
+	drowsy
+	dudley
+	echo
+	ed-and-ned
+	fizzy
+	flavio
+	freezy
+	frosty
+	ginger
+	glooper
+	gloppy
+	gluey
+	greaser
+	gunky
+	gummy
+	habanero
+	hustle-and-bustle
+	icy
+	lax
+	nod
+	oatmeal
+	oozy
+	oyl
+	pan
+	plush
+	poppy
+	pyro
+	scrubby
+	serrano
+	shadow
+	slacker
+	sleeping-beauty
+	sleepy
+	sloth
+	slushy
+	smokey
+	snory
+	snoozy
+	snowy
+	snowflake
+	slippy
+	slithy
+	miles-and-pounds
+	sludgy
+	slugette
+	slugicus
+	sluggus
+	sluggo
+	sluggy
+	slug-jr
+	slug-of-adversity
+	slug-of-beginnings
+	slug-of-conquest
+	slug-of-puzzles
+	slug-of-returning
+	slug-of-wisdom
+	slugson
+	slugsly
+	slug-sr
+	slug-x
+	buck-and-penny
+	soggy
+	soppy
+	sylvester
+	umbra
+	wendy
+	wild-and-wooly
+	wormy
+	zanzibar
+show string(a slug-id)
+	match a
+	as alice then "Alice"
+	as andy then "Andy"
+	as bismarck-and-fargo then "Bismarck and Fargo"
+	as bob then "Bob"
+	as boggy then "Boggy"
+	as buck-and-penny then "Buck and Penny"
+	as bullton then "Bullton"
+	as cayenne then "Cayenne"
+	as chilly then "Chilly"
+	as chip then "Chip"
+	as cola then "Cola"
+	as cookie then "Cookie"
+	as cushy then "Cushy"
+	as dandelion then "Dandelion"
+	as dozer then "Dozer"
+	as dreamer then "Dreamer"
+	as drowsy then "Drowsy"
+	as dudley then "Dudley"
+	as echo then "Echo"
+	as ed-and-ned then "Ed and Ned"
+	as fizzy then "Fizzy"
+	as flavio then "Flavio"
+	as freezy then "Freezy"
+	as frosty then "Frosty"
+	as ginger then "Ginger"
+	as glooper then "Glooper"
+	as gloppy then "Gloppy"
+	as gluey then "Gluey"
+	as greaser then "Greaser"
+	as gunky then "Gunky"
+	as gummy then "Gummy"
+	as habanero then "Habanero"
+	as hustle-and-bustle then "Hustle and Bustle"
+	as icy then "Icy"
+	as lax then "Lax"
+	as miles-and-pounds then "Miles and Pounds"
+	as nod then "Nod"
+	as oatmeal then "Oatmeal"
+	as oozy then "Oozy"
+	as oyl then "Oyl"
+	as pan then "Pan"
+	as plush then "Plush"
+	as poppy then "Poppy"
+	as pyro then "Pyro"
+	as scrubby then "Scrubby"
+	as serrano then "Serrano"
+	as shadow then "Shadow"
+	as slacker then "Slacker"
+	as sleeping-beauty then "Sleeping Beauty"
+	as sleepy then "Sleepy"
+	as sloth then "Sloth"
+	as slushy then "Slushy"
+	as smokey then "Smokey"
+	as snoozy then "Snoozy"
+	as snory then "Snory"
+	as snowy then "Snowy"
+	as snowflake then "Snowflake"
+	as slippy then "Slippy"
+	as slithy then "Slithy"
+	as sludgy then "Sludgy"
+	as slugette then "Slugette"
+	as slugicus then "Slugicus"
+	as sluggus then "Sluggus"
+	as sluggo then "Sluggo"
+	as sluggy then "Sluggy"
+	as slug-jr then "Slug Jr"
+	as slug-of-adversity then "Slug of Adversity"
+	as slug-of-beginnings then "Slug of Beginnings"
+	as slug-of-conquest then "Slug of Conquest"
+	as slug-of-puzzles then "Slug of Puzzles"
+	as slug-of-returning then "Slug of Returning"
+	as slug-of-wisdom then "Slug of Wisdom"
+	as slugson then "Slugson"
+	as slugsly then "Slugsly"
+	as slug-sr then "Slug Sr"
+	as slug-x then "Slug X"
+	as soggy then "Soggy"
+	as soppy then "Soppy"
+	as sylvester then "Sylvester"
+	as umbra then "Umbra"
+	as wendy then "Wendy"
+	as wild-and-wooly then "Wild and Wooly"
+	as wormy then "Wormy"
+	as zanzibar then "Zanzibar"

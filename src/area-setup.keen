@@ -1,0 +1,486 @@
+import
+	grid/bounded-grid
+	grid/geometry
+	grid/grid-entities
+	grid/grid-path
+	grid/grid-set
+	grid/grid-set-set
+	grid/mut-grid-set
+	grid/sparse-grid
+	grid/util/betweenness-centrality
+	grid/util/more-geometry
+	grid/util/random-util
+	grid/util/reachability
+	keen/bits
+	keen/col/enum-map
+	keen/col/enum-set
+	keen/io/duration
+	keen/math/math
+	keen/math/vec
+	keen/random/random
+	keen/random/sfc
+	keen/random/util
+	../bin/puzzles-easy as puzzles-easy string
+	../bin/puzzles-normal as puzzles-normal string
+	../bin/puzzles-hard as puzzles-hard string
+	./area-blob
+	./areas
+	./area-setup-types
+	./game-types
+	./game-util
+	./knobs
+	./maze
+	./puzzles/generate-puzzles
+	./util/more-grid-utils
+
+load-game game(state persistent-state, now duration) random
+	persistent-state: state
+	last-play-time: now
+	area-state: reset-area-state state, north
+	ui-state: ui-state-initial
+
+load-next-area game(a game, load load-area) random
+	a
+	then unless load.area == a.area then set persistent-state * (prev-area + cur-area), (a.area, load.area)
+	then set checkpoint, load.checkpoint
+	then reset-area-state
+	then if load.checkpoint then set player * pos, load.checkpoint
+-reset-area-state game(a game) random
+	set a, area-state, reset-area-state a.persistent-state, a.player.dir
+
+reset-area-state area-state(state persistent-state, player-dir dir4) random
+	area = state.cur-area
+	rotation = area-rotation area, state.seed
+	difficulty = state.difficulty
+	config = area-config area
+	entrance = rotate config.map.initial, rotation
+	map = reset-tile-map state, area, entrance, difficulty, config
+	puzzles = reset-puzzles state, area, map.puzzles
+	tile-map = add-fire-and-flood map.tile-map, puzzles.fire, puzzles.flood
+	sprinkle-entities =
+		sprinkle-maze map.maze-tiles, tile-map, map.valves, difficulty, config.sprinkle, state.flashlight-parts.size
+	exclusive-entities exclusive-entities =
+		-- omit entrance.entities, {it.ground-item and it.item == napkin}
+		-- puzzles.entities.to
+		-- sprinkle-entities
+		-- map map.valves, it.valve
+		-- map map.warps, {it}
+	assert are-unique for?::slug-id[] x in exclusive-entities then x.slug.?id
+	tile-map: tile-map
+	player:
+		warps warp[] = for? x in exclusive-entities then warp x
+		pos: state.checkpoint else warp-from-area state.prev-area, area, warps, map.tile-map.ground
+		dir: player-dir
+		is-holding-pillow: false
+		statuses: ()
+	player-gravity-radius: adjust-player-gravity-radius config.player-gravity-radius, difficulty
+	exclusive-entities:	exclusive-entities
+	smoke: ()
+	slimy: ()
+	puzzle-win-switches: puzzles.win-switches
+	puzzles: puzzles.puzzles
+	shower: false
+	visibility: config.visibility
+	music-state: none
+
+-warp-from-area grid-pos(from-area area?, to-area area, warps warp[], ground grid-set)
+	do if from-area
+	effective-from-area = if from-area == backyard and to-area == foyer then garden else from-area
+	warp = find! warps, it.next-area == effective-from-area
+	if warp.dir
+		warp.pos
+	else
+		# Since non-directional warps are instant, spawn next to it
+		# (so you can use the warp without having to step off and on again)
+		find! warp.pos.neighbors4, ground[it]
+
+-add-fire-and-flood tile-map(a tile-map, more-fire grid-set, more-flood grid-set)
+	a
+	then modify fire, it | more-fire
+	then modify flood, it | more-flood
+
+-reset-puzzles-result record
+	puzzles puzzle-info[]
+	win-switches grid-set
+	fire grid-set
+	flood grid-set
+	valves grid-set
+	entities exclusive-entities
+-reset-puzzles reset-puzzles-result(state persistent-state, area area, puzzles puzzle-layout-and-entities[]) random
+	solved-puzzles = state.solved-puzzles[area]
+	unsolved-puzzles puzzle-layout-and-entities[] = filter puzzles, {not solved-puzzles[it.placement]}
+	puzzles: map unsolved-puzzles, of u
+		placement: u.placement
+		bounds: u.layout.puzzle-bounds
+	win-switches: map-optionally unsolved-puzzles, it.layout.goal.grid-pos
+	fire: union_ unsolved-puzzles, it.entities.fire
+	flood: union_ unsolved-puzzles, it.entities.flood
+	valves: union_ puzzles, it.layout.valves
+	entities: for* puzzle in puzzles
+		entities-for-puzzle state, area, puzzle, solved-puzzles[puzzle.placement]
+
+-entities-for-puzzle exclusive-entity[]
+	state persistent-state
+	area area
+	le puzzle-layout-and-entities
+	is-solved bool
+do random
+	layout = le.layout
+	puzzle = le.entities
+	-- unless is-solved
+		-- map layout.breakable-walls, it.breakable-wall
+		-- for block in puzzle.blocks
+			occupied-space: block
+			lit: if layout.features[lit-blocks] then unlit else never-lit
+			tunnel: if layout.features[tunnels] then as-tunnel-dirs block
+		-- for pos in puzzle.pillows then pillow pos
+	-- for pos, reward in layout.rewards
+		match reward
+		as basic-item
+			ground-item pos, reward
+		as reward-equipment
+			kind = equipment-for-area state.seed, area, if reward.is-second then 1
+			if state.equipment[kind]
+				ground-item pos, cookie
+			else
+				ground-equipment pos, kind
+		as reward-flashlight-part
+			kind = flashlight-part-for-area! state.seed, area
+			if state.flashlight-parts[kind]
+				ground-item pos, cookie
+			else
+				ground-flashlight-part pos, kind
+		as reward-harley
+			harley waiting, pos, south
+		as reward-random-item
+			# Don't reward the sparkler, since it's not useful outside the basement
+			ground-item pos, random reward.choices
+		as reward-slug
+			slug reward.id, npc, pos, south
+		as reward-warp
+			warp pos, (), reward.area
+
+-area-layout record
+	required-points grid-set
+	maze-tiles grid-set
+	sites area-site[]
+
+-area-site union(warp, puzzle-layout-and-entities)
+
+| If a warp is directional, it should be the only position that far.
+-area-restriction partial-bounds(a area-site)
+	if warp a and a.dir
+		exclusive-pos a.pos, a.dir
+-required-point grid-pos(a area-site)
+	match a
+	as warp
+		a.pos
+	as puzzle-layout-and-entities
+		a.layout.entrance
+-excluded-from-maze grid-set(a area-site)
+	match a
+	as warp then ()
+	as puzzle-layout-and-entities then a.layout.full-bounds.to - a.layout.entrance
+-ground grid-set(a area-site)
+	match a
+	as warp then a.pos,
+	as puzzle-layout-and-entities then a.layout.ground
+-safe grid-set(a area-site)
+	match a
+	as warp then a.pos,
+	as puzzle-layout-and-entities then a.layout.safe
+
+-lay-out-area area-layout
+	state persistent-state
+	area area
+	config area-layout-config
+	entrance area-entrance
+do random
+	rotation = area-rotation area, state.seed
+	main-dir4 dir4 = north + rotation
+	main-direction =
+		# We can't vary the angle too much,
+		# or something that is supposed to be {midway-left} could end up being lower than the beginning.
+		max-angle-diff float32 = pi / 7
+		main-dir4.angle + (random -max-angle-diff .. max-angle-diff)
+	puzzle-getter = puzzle-getter state.seed, area, match state.difficulty
+	as easy then puzzles-easy
+	as normal then puzzles-normal
+	as hard then puzzles-hard
+	beginning-exit, sites =
+		lay-out-sites state.seed, area, config, entrance.exit, main-dir4, main-direction, rotation, puzzle-getter
+	required-points grid-set =
+		- beginning-exit
+		-- map-optionally (zip config.sites, sites), of site-config, site
+			if site-config.placement != beginning
+				site.required-point
+	# Expand to give room for walls around the ground
+	tutorial-and-puzzle-space = (entrance.ground.expand - entrance.exit) | union_ sites, it.excluded-from-maze
+	blob = make-blob required-points, tutorial-and-puzzle-space
+	blob-bounds = intersection sites, it.area-restriction
+	maze-tiles = (blob & blob-bounds) - tutorial-and-puzzle-space
+	forbid overlaps maze-tiles, union_::grid-set sites, it.excluded-from-maze
+	for x in required-points
+		assert maze-tiles[x] or some x.neighbors4, maze-tiles[it]
+	required-points: required-points
+	maze-tiles: maze-tiles
+	sites:
+		-- if warp = config.origin-warp
+			-
+				:: warp
+				pos: (0, 0)
+				dir: unless area == basement or warp == basement
+					-main-dir4
+				next-area: warp
+		-- from-option entrance.puzzle
+		-- sites
+
+-lay-out-sites (grid-pos, area-site[])
+	seed nat64
+	area area
+	config area-layout-config
+	tutorial-exit grid-pos
+	main-dir4 dir4
+	main-direction float32
+	rotation relative-dir4
+	puzzles puzzle-getter
+do
+	# Randomly flip puzzles to cheaply double the variety
+	random-flips bool[] =
+		the random = sfc32 (seed ^ area.to)
+		map config.sites, {random}
+	beginning-exit = tutorial-exit + if begin-index = find-index config.sites, it.placement == beginning
+		puzzle = config.sites[begin-index].kind.puzzle-layout!
+		to::grid-displacement exit! rotate (flip-if random-flips[begin-index], puzzle), rotation
+	res area-site[] = for site, flip in zip config.sites, random-flips
+		pos grid-pos = match site.placement
+		as beginning
+			tutorial-exit
+		as midway-middle
+			to config.length / 2 * from-angle main-direction
+		as midway-left
+			beginning-exit + (to config.length / 2 * (from-angle main-direction + pi / 4))
+		as midway-right
+			beginning-exit + (to config.length / 2 * (from-angle main-direction - pi / 4))
+		as farthest
+			to config.length * from-angle main-direction
+
+		site-rotation = rotation + site.placement.rotation
+		site-displacement = to::grid-displacement pos
+		match site.kind
+		as area
+			:: warp
+			pos: pos
+			dir: dir-from-placement main-dir4, site.placement
+			next-area: site.kind
+		as babeki
+			dir = dir-from-placement main-dir4, site.placement
+			:: warp
+			pos: pos
+			dir: dir
+			next-area: babeki site.kind, seed
+		as puzzle-layout
+			placement: site.placement.to
+			layout:
+				(rotate (flip-if flip, site.kind), site-rotation) + site-displacement
+			entities:
+				puz = puzzles[site.placement]
+				(rotate (flip-if flip, puz), site-rotation) + site-displacement
+	beginning-exit, res
+
+-flip-if puzzle-layout(flip bool, a puzzle-layout)
+	if flip then flip-horizontally a else a
+-flip-if blocks-puzzle(flip bool, a blocks-puzzle)
+	if flip then flip-horizontally a else a
+
+-dir-from-placement dir4(main-dir4 dir4, placement site-placement)
+	match placement
+	as beginning
+		throw unreachable
+	as farthest or midway-middle
+		main-dir4
+	as midway-left
+		rotate-left main-dir4
+	as midway-right
+		rotate-right main-dir4
+
+
+-reset-tile-map record
+	maze-tiles grid-set
+	tile-map tile-map
+	puzzles puzzle-layout-and-entities[]
+	valves grid-set
+	warps warp[]
+-reset-tile-map reset-tile-map
+	state persistent-state
+	area area
+	entrance area-entrance
+	difficulty difficulty
+	config area-config
+do
+	# This ensures the area is generated the same every time you visit it
+	the random = sfc32 state.seed
+	layout = lay-out-area state, area, config.layout, entrance
+	map-and-puzzle-ground = entrance.ground | (union_ layout.sites, it.ground)
+	map-and-puzzle-safe = entrance.safe | (union_ layout.sites, it.safe)
+	maze-ground = make-maze layout.maze-tiles, layout.required-points, config.map.maze[difficulty]
+	most-ground = map-and-puzzle-ground | maze-ground
+	safe = map-and-puzzle-safe |
+		add-safe-tiles layout.maze-tiles, map-and-puzzle-safe, most-ground, config.map.maze-safe-tiles[difficulty]
+	all-ground = most-ground | safe
+	fire, flood = fire-and-flood maze-ground - safe, config.sprinkle.fire-and-flood
+	forbid any-overlaps (fire, flood, safe)
+	maze-tiles: layout.maze-tiles
+	tile-map:
+		tiles: make-tiles all-ground, safe
+		maze-ground-minus-safe: maze-ground - safe
+		ground: all-ground
+		safe: safe
+		ground-minus-safe: all-ground - safe
+		walls: if config.map.non-ground-is-wall
+			all-ground.bounds.to::grid-set - all-ground
+		fire: fire
+		flood: flood
+	puzzles: for? x in layout.sites then puzzle-layout-and-entities x
+	valves: if config.sprinkle.fire-and-flood != 0
+		puzzle-valves grid-set = union_ layout.sites, {if puzzle-layout-and-entities it then it.layout.valves}
+		sprinkle-valves all-ground, maze-ground, fire | flood, puzzle-valves, config.sprinkle.extra-valves[difficulty]
+	warps: map-optionally layout.sites, it.warp
+
+-fire-and-flood (grid-set, grid-set)(ground grid-set, n nat)
+	remaining mut = ground
+	fire mut-grid-set = ()
+	flood mut-grid-set = ()
+	for i in n
+		do if any remaining else
+			log-error "Could not place as many fire/flood as desired",
+				:: json
+				remaining: n - i
+		pos = betweenest remaining
+		(if is-even i then fire else flood) ~= pos
+		remaining -:= to::grid-set (center: pos, radius: min-distance-for-fire-and-flood)::grid-rect
+	- expand-within fire.move-to, ground
+	- expand-within flood.move-to, ground
+
+-add-safe-tiles grid-set(maze-tiles grid-set, map-safe-tiles grid-set, ground grid-set, amount nat) random
+	# Safe tiles should not overwrite the maze ground
+	# (if they did, slugs could get stuck since they can't traverse safe tiles)
+	candidates grid-set = ground.neighbors-set & maze-tiles - ground
+	choose-distant-random-positions-in candidates, amount, map-safe-tiles
+
+-make-tiles tile-id bounded-grid(is-ground grid-set, is-safe grid-set)
+	assert contains-all is-ground, is-safe
+	# Some day we might choose tiles based on the layout around them
+	ground-tile nat8 = 0
+	non-ground-tile nat8 = 1
+	safe-tile nat8 = 2
+	make is-ground.bounds | is-safe.bounds, of pos
+		if is-ground[pos]
+			if is-safe[pos] then safe-tile else ground-tile
+		else
+			non-ground-tile
+
+| Ensures that every fire or flood tile has a valve walkable from it
+-sprinkle-valves grid-set
+	ground grid-set
+	maze-ground grid-set
+	fire-and-flood grid-set
+	initial-valves grid-set
+	extra-valves nat
+do random
+	# In order for the maze to be solvable, we need at least one valve in every section between fire / flood
+	sections = to-contiguous-grid-sets ground - fire-and-flood
+	res mut = initial-valves
+	for section in sections
+		neighbors = section.neighbors-set - ground
+		unless overlaps neighbors, res
+			res |:= random neighbors
+	for _ in extra-valves
+		res |:= random-where! maze-ground.neighbors-set, of x
+			not ground[x] and (distance-to-nearest res, x) > 3
+	res
+
+-expand-within grid-set(a grid-set, within grid-set)
+	a | (within & a.neighbors-set)
+
+-sprinkle-maze exclusive-entity[]
+	maze grid-set
+	tile-map tile-map
+	valves grid-set
+	difficulty difficulty
+	config area-sprinkle-config
+	flashlight-parts nat
+do random
+	maze-ground = maze & tile-map.ground
+	usable-ground = maze-ground - tile-map.safe - tile-map.fire - tile-map.flood
+	pillow-positions = choose-distant-random-positions-in maze-ground, config.pillows[difficulty]
+	slugs = sprinkle-slugs config.slugs, usable-ground - pillow-positions
+	slug-positions grid-set = union_ slugs, it.occupied-space
+	-- map pillow-positions, it.pillow
+	-- slugs
+	--
+		items = add-extra-items config.items, difficulty, flashlight-parts
+		keep-items-far-from = tile-map.safe | valves
+		used mut grid-set = keep-items-far-from | pillow-positions | slug-positions
+		next-to-ground = maze-ground.neighbors-set - maze-ground
+		# Include tile-map.safe in walkable so they will count for walkability.
+		# Since tile-map.safe is also in keep-items-far-from, we won't actually put items there.
+		item-positions = most-distant-positions maze-ground | tile-map.safe, keep-items-far-from, items.size
+		for item, base-pos in zip items, item-positions
+			# Don't place edible items on the ground or the slugs will get them before the player
+			can-place = if slugs-go-for-item item
+				next-to-ground - used
+			else
+				maze-ground - used
+			pos = nearest! can-place, base-pos
+			used |:= pos
+			ground-item pos, item
+
+-sprinkle-slugs exclusive-entity[](slugs slug-id set, ground grid-set) random
+	sorted slug-id[] = sort slugs.to::slug-id[], of slug
+		# Place sleeping slugs first, then big slugs, then the rest
+		compare-reverse slug.desired-size + if starts-sleeping slug then 100
+	remaining-ground mut = ground
+	for slug in sorted
+		config = slug-config slug
+		# Put sleeping slugs in positions with high betweenness so they are likely to be in the player's way
+		positions grid-path = if config.flags_[sleeping]
+			config.size is 1
+			- betweenest remaining-ground
+		else
+			choose-slug-positions remaining-ground, config.size
+		remaining-ground -:= positions.to
+		make-slug slug, config, positions
+
+make-slug slug(id slug-id, config slug-config, positions grid-path) random
+	id: id
+	flags_: config.flags_
+	positions: positions
+	dir: positions[0].dir-to-next else north
+	chasing: ()
+	turns-until-recovery: max-value
+	turns-until-beam: 0
+	turns-until-bomb: if drops-bombs config.flags_
+		random 0::nat8 .. slug-drop-bomb-turns
+
+-choose-slug-positions grid-path(ground grid-set, size nat8) random
+	# For big slugs: Start growing from an intersection so it has a way out.
+	if res = first-random-where ground.intersections, {try-grow-big-slug ground, it, size}
+		res
+	elif size == 1
+		- random ground
+	else
+		log-error "Can't make slug as big as desired", size
+		choose-slug-positions ground, size - 1
+
+-try-grow-big-slug grid-path?(ground virtual-grid-set, start grid-pos, size nat) random
+	match size
+	as 0
+		throw unreachable
+	as 1
+		if ground[start]
+			start,
+	else
+		first-random-where start.neighbors4, of neighbor
+			if ground[neighbor] and rest = try-grow-big-slug ground - start, neighbor, size - 1
+				start ~ rest

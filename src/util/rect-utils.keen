@@ -1,0 +1,39 @@
+import
+	grid/geometry
+	keen/math/geom2d/aa-rect
+	keen/math/geom2d/size2
+
+shrink-by-fraction aa-rect32(a aa-rect32, fraction float32, shrunk-side dir4)
+	assert fraction < 1
+	match shrunk-side
+	as north
+		modify a, top, it - a.height * fraction
+	as east
+		modify a, right, it - a.width * fraction
+	as south
+		modify a, bottom, it + a.height * fraction
+	as west
+		modify a, left, it + a.width * fraction
+shrink-by-amount aa-rect32(a aa-rect32, amount float32)
+	dx = min amount, a.width / 2
+	dy = min amount, a.height / 2
+	left: a.left + dx
+	right: a.right - dx
+	bottom: a.bottom + dy
+	top: a.top - dy
+
+expand-by-amount aa-rect32(a aa-rect32, amount float32)
+	left: a.left - amount
+	right: a.right + amount
+	bottom: a.bottom - amount
+	top: a.top + amount
+shrink-by-fraction aa-rect32(a aa-rect32, fraction float32)
+	assert fraction < 1
+	center: a.center
+	size: a.size * (1 - fraction)
+shrink-horizontally-by-fraction aa-rect32(a aa-rect32, fraction float32)
+	assert fraction < 1
+	left: a.left + a.width * fraction / 2
+	right: a.right - a.width * fraction / 2
+	bottom: a.bottom
+	top: a.top

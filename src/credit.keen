@@ -1,0 +1,6 @@
+credit record
+	url string
+	authors string[]
+
+all-authors string set(credits credit[])
+	flat-map credits, it.authors

@@ -1,0 +1,242 @@
+import
+	grid/bounded-grid
+	grid/geometry
+	grid/grid-set
+	grid/grid-set-set
+	grid/sparse-grid
+	keen/col/enum-map
+	keen/parse
+	./game-types
+
+| All areas are configured laid out from south to north. They may be rotated later.
+area-config record
+	layout area-layout-config
+	map area-map-config
+	sprinkle area-sprinkle-config
+	player-gravity-radius float32
+	visibility area-visibility
+area-layout-config record
+	origin-warp area?
+	length float32
+	sites area-site-config[]
+area-site-config record
+	placement site-placement
+	| Coordinates here are relative to the entrance of the puzzle
+	kind area-site-kind
+area-site-kind union(area, puzzle-layout, babeki)
+| Number 0 .. 3 that will be bathroom, bedroom, or kitchen, depending on the seed
+babeki record(n nat8)
+puzzle-features flags
+	fire
+	flood
+	pillows
+	tunnels
+	lit-blocks
+puzzle-layout record
+	puzzle-tiles grid-set
+	entrance grid-pos
+	breakable-walls grid-set
+	rewards puzzle-reward sparse-grid = ()
+	valves grid-set = ()
+	exit grid-pos? = ()
+	features puzzle-features = ()
+do
+	forbid any-overlaps (puzzle-tiles, (entrance,), breakable-walls, rewards.set, valves, (if exit then exit,))
+	assert some puzzle-tiles, {is-next-to it, breakable-walls}
+	assert not any rewards or some rewards.set, {is-next-to it, breakable-walls}
+	count puzzle-tiles, {is-next-to it, entrance} is 1
+	assert every valves, {is-next-to it, puzzle-tiles}
+	assert not exit or is-next-to exit, rewards.set
+	assert features[lit-blocks] or only-where breakable-walls.bounds.center.neighbors4, puzzle-tiles[it]
+rotate puzzle-layout(a puzzle-layout, rotation relative-dir4)
+	puzzle-tiles: rotate a.puzzle-tiles, rotation
+	entrance: rotate a.entrance, rotation
+	breakable-walls: rotate a.breakable-walls, rotation
+	rewards: rotate a.rewards, rotation
+	valves: rotate a.valves, rotation
+	exit: ?rotate a.exit, rotation
+	features: a.features
+flip-horizontally puzzle-layout(a puzzle-layout)
+	puzzle-tiles: flip-horizontally a.puzzle-tiles
+	entrance: flip-horizontally a.entrance
+	breakable-walls: flip-horizontally a.breakable-walls
+	rewards: flip-horizontally a.rewards
+	valves: flip-horizontally a.valves
+	exit: ?flip-horizontally a.exit
+	features: a.features
+puzzle-goal union(grid-pos, light-every-block)
+light-every-block record
+goal puzzle-goal(a puzzle-layout)
+	if a.features[lit-blocks]
+		light-every-block
+	else
+		:: grid-pos
+		connector = a.breakable-walls.bounds.center
+		only-where! connector.neighbors4, a.puzzle-tiles[it]
+~ + puzzle-layout(a puzzle-layout, diff grid-displacement)
+	puzzle-tiles: a.puzzle-tiles + diff
+	entrance: a.entrance + diff
+	breakable-walls: a.breakable-walls + diff
+	rewards: a.rewards + diff
+	valves: a.valves + diff
+	exit: if e = a.exit then e + diff
+	features: a.features
+puzzle-layout-init record
+	layout string
+	rewards puzzle-reward[]
+	features puzzle-features = ()
+	exit grid-pos? = ()
+puzzle puzzle-layout(init puzzle-layout-init)
+	grammar puzzle-layout-kind bounded-grid grammar = bounded-grid empty, of char
+		match char
+		as "•"
+			puzzle-tile
+		as "C"
+			connector
+		as "R"
+			reward
+		as "V"
+			valve
+		else
+			throw unreachable
+	grid = parse grammar, init.layout
+	rewards = positions-where grid, it.b == reward
+	rewards.size is init.rewards.size
+	puzzle-tiles = positions-where grid, it.b == puzzle-tile
+	puzzle-tiles.bounds.bottom is 1 # Puzzles should be laid out starting on south end (will be rotated as necessary)
+	puzzle-tiles: puzzle-tiles
+	entrance: 0, 0
+	breakable-walls: positions-where grid, it.b == connector
+	rewards: for pos, reward in zip rewards, init.rewards then pos, reward
+	valves: positions-where grid, it.b == valve
+	exit: init.exit
+	features: init.features
+-puzzle-layout-kind enum(empty, puzzle-tile, connector, reward, valve, exit)
+full-bounds grid-rect(a puzzle-layout)
+	# We want walls all around the puzzle. But not around the entrance.
+	base = a.puzzle-bounds | a.breakable-walls.bounds | a.rewards.bounds
+	(expand base, 1) | a.entrance | a.valves.bounds
+puzzle-bounds grid-rect(a puzzle-layout)
+	a.puzzle-tiles.bounds
+ground grid-set(a puzzle-layout)
+	a.puzzle-tiles | a.breakable-walls | a.safe
+safe grid-set(a puzzle-layout)
+	a.rewards.set | a.entrance | if e = a.exit then e,
+
+| A {puzzle-layout} is required to give this context
+blocks-puzzle record
+	blocks grid-set-set = ()
+	pillows grid-set = ()
+	fire grid-set = ()
+	flood grid-set = ()
+~ to json(a blocks-puzzle)
+	with::json-object out in build
+		out ~= "blocks", a.blocks.to
+		if any a.pillows then out ~= "pillows", a.pillows.to
+		if any a.fire then out ~= "fire", a.fire.to
+		if any a.flood then out ~= "flood", a.flood.to
+~ to blocks-puzzle(a json)
+	blocks: a["blocks"].to
+	pillows: a["pillows"].to
+	fire: a["fire"].to
+	flood: a["flood"].to
+~ + blocks-puzzle(a blocks-puzzle, d grid-displacement)
+	blocks: map a.blocks, it + d
+	pillows: a.pillows + d
+	fire: a.fire + d
+	flood: a.flood + d
+~ rotate blocks-puzzle(a blocks-puzzle, r relative-dir4)
+	blocks: rotate a.blocks, r
+	pillows: rotate a.pillows, r
+	fire: rotate a.fire, r
+	flood: rotate a.flood, r
+~ flip-horizontally blocks-puzzle(a blocks-puzzle)
+	blocks: flip-horizontally a.blocks
+	pillows: flip-horizontally a.pillows
+	fire: flip-horizontally a.fire
+	flood: flip-horizontally a.flood
+
+to site-placement-or-tutorial(a site-placement)
+	match a
+	as beginning then beginning
+	as midway-left then midway-left
+	as midway-right then midway-right
+	as midway-middle then midway-middle
+	as farthest then farthest
+
+site-placement enum
+	beginning
+	midway-left
+	midway-right
+	midway-middle
+	farthest
+rotation relative-dir4(a site-placement)
+	match a
+	as beginning or farthest or midway-middle then forward
+	as midway-left then left
+	as midway-right then right
+show string(a site-placement) = a.to::symbol.to
+puzzle-reward union
+	basic-item
+	reward-equipment
+	reward-flashlight-part
+	reward-harley
+	reward-random-item
+	reward-slug
+	reward-warp
+reward-equipment record(is-second bool)
+reward-flashlight-part record
+reward-harley record
+reward-slug record(id slug-id)
+reward-random-item record(choices basic-item[])
+reward-warp record(area area)
+area-map-config record
+	initial area-entrance
+	maze-safe-tiles (difficulty, nat) enum-map
+	maze (difficulty, maze-config) enum-map
+	non-ground-is-wall bool = false
+area-entrance record
+	ground grid-set
+	safe grid-set
+	exit grid-pos
+	entities exclusive-entity[]
+	puzzle puzzle-layout-and-entities?
+do
+	forbid ground[exit]
+	assert is-next-to exit, ground
+rotate area-entrance(a area-entrance, rotation relative-dir4)
+	do unless rotation == forward else a
+	ground: rotate a.ground, rotation
+	safe: rotate a.safe, rotation
+	exit: rotate a.exit, rotation
+	entities: for x in a.entities
+		rotate x, rotation
+	puzzle: ?rotate a.puzzle, rotation
+-rotate exclusive-entity(a exclusive-entity, rotation relative-dir4)
+	res exclusive-entity = modify a, occupied-space::((exclusive-entity, grid-set) lens), {rotate it, rotation}
+	match res
+	as slug
+		modify::slug res, dir, it + rotation
+	else
+		res
+
+puzzle-layout-and-entities record
+	placement site-placement-or-tutorial
+	layout puzzle-layout
+	entities blocks-puzzle
+rotate puzzle-layout-and-entities(a puzzle-layout-and-entities, rotation relative-dir4)
+	placement: a.placement
+	layout: rotate a.layout, rotation
+	entities: rotate a.entities, rotation
+
+maze-config record
+	dead-ends float
+	connections float
+| The config specifies the hard mode values.
+| Easy and normal mode will have more items and less slugs.
+area-sprinkle-config record
+	items basic-item[]
+	slugs slug-id set
+	fire-and-flood nat = 0
+	extra-valves (difficulty, nat) enum-map = ()
+	pillows (difficulty, nat) enum-map = ()

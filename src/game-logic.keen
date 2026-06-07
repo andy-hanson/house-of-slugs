@@ -1,0 +1,1618 @@
+import
+	game-backend/audio
+	game-backend/input
+	grid/bounded-grid
+	grid/geometry
+	grid/grid-entities
+	grid/grid-path
+	grid/grid-set
+	grid/sparse-grid
+	grid/util/more-geometry
+	grid/util/reachability
+	grid/util/visibility
+	keen/col/enum-map
+	keen/col/enum-set
+	keen/io/duration
+	keen/enums
+	keen/math/geom2d/circle
+	keen/random/random
+	keen/random/util
+	./debug-commands
+	./dialogs
+	./durations
+	./game-types
+	./game-util
+	./knobs
+	./music
+	./sounds
+
+apply-input-inner game(a game, trigger input-trigger, holding button set) game-change-effects, random
+	res = match trigger
+	as button
+		apply-input-button a, trigger, holding[A]
+	as string
+		did-not-use-a-turn apply-input-command a, trigger
+	res.new-game
+	then if res.used-turn then others-move res.thrown-item
+
+-others-move game(a game, thrown-item chaseable-item?) game-change-effects, random
+	a
+	then modify total-turns, {saturating-add it, 1}
+	then slugs-move thrown-item
+	then update-non-moving-entities
+	then harley-moves
+	then update-smoke
+	then player-statuses-dissipate
+	then smoke-affects-player
+	then maybe-change-music
+
+-maybe-change-music game(a game) game-change-effects
+	do unless get-chaseable-harley a else a
+	if a.maze-ground-minus-safe[a.player.pos]
+		maybe-change-music-to a, if a.shower then maze-shower else maze
+	elif is-inside-non-tutorial-puzzle a
+		maybe-change-music-to a, puzzle
+	elif a.music-state == puzzle and not is-inside-non-tutorial-puzzle a
+		stop-music music-fade-out-time
+		set a, music-state, none
+	else
+		a
+-maybe-change-music-to game(a game, music area-music-state) game-change-effects
+	do unless a.music-state == music else a
+	match music
+	as none
+		stop-music fade-to-black-time
+	as maze
+		m = music-for-area a.area
+		if a.music-state == maze-shower
+			swap-music m
+		else
+			play-music m
+	as maze-shower
+		if a.music-state == maze
+			swap-music bathroom-shower
+		else
+			play-music bathroom-shower
+	as puzzle
+		play-music puzzle
+	set a, music-state, music
+
+-smoke-affects-player game(a game) game-change-effects
+	do if smoke = a.smoke[a.player.pos] else a
+	match smoke.kind
+	as pepper
+		a
+		then modify player, {make-status it, crying, player-crying-due-to-pepper-bomb-turns}
+		then trigger-dialog-on-progress-flag has-been-peppered, {first-pepper}
+	as perfume
+		a
+	as plain
+		a
+	as sleep
+		a
+		then modify player, {make-status it, sleeping, player-sleeping-turns}
+		then trigger-dialog-on-progress-flag has-been-sleep-bombed, {first-sleep-gas}
+
+-apply-input-result record
+	new-game game
+	used-turn bool
+	thrown-item chaseable-item?
+-used-a-turn apply-input-result(a game) = new-game: a, used-turn: true, thrown-item: ()
+-did-not-use-a-turn apply-input-result(a game) = new-game: a, used-turn: false, thrown-item: ()
+-apply-input-button apply-input-result(a game, input button, holding-a bool) game-change-effects, random
+	match input
+	as A
+		match ui = a.ui-state
+		as ui-state-dialog
+			did-not-use-a-turn dialog-next a
+		as ui-state-initial
+			exit-initial-state a
+		as ui-state-normal
+			defrost a else pressed-a-normal a
+		as ui-state-item-select
+			use-item a, ui
+		as ui-state-throw-select
+			throw-item a, ui
+		as ui-state-paused
+			unpause a, ui
+		as ui-state-confirmation
+			confirm-confirmation a, ui
+		as ui-state-the-end
+			cycle-the-end a, ui
+	as B
+		match ui = a.ui-state
+		as ui-state-dialog
+			did-not-use-a-turn dialog-next a
+		as ui-state-initial
+			exit-initial-state a
+		as ui-state-normal
+			defrost a else used-a-turn a
+		as ui-state-item-select
+			change-ui-state a, ui-state-normal
+		as ui-state-throw-select
+			change-ui-state a, ui-state-item-select ui.selected-item-index
+		as ui-state-paused
+			change-ui-state a, modify::ui-state-paused ui, kind, it.next-cycle
+		as ui-state-confirmation
+			abort-confirmation a
+		as ui-state-the-end
+			cycle-the-end a, ui
+	as left
+		apply-input-direction a, west, holding-a
+	as right
+		apply-input-direction a, east, holding-a
+	as down
+		apply-input-direction a, south, holding-a
+	as up
+		apply-input-direction a, north, holding-a
+	as select
+		match ui = a.ui-state
+		as ui-state-dialog
+			did-not-use-a-turn dialog-next a
+		as ui-state-initial
+			exit-initial-state a
+		as ui-state-normal
+			defrost a else if not any a.inventory
+				not-allowed a
+			elif is-holding-pillow a.player
+				try-drop-pillow a
+			else
+				change-ui-state a, ui-state-item-select 0
+		as ui-state-item-select
+			change-ui-state a, ui-state-normal
+		as ui-state-throw-select
+			change-ui-state a, ui-state-item-select ui.selected-item-index
+		as ui-state-paused
+			change-ui-state a, modify::ui-state-paused ui, kind, it.next-cycle
+		as ui-state-confirmation
+			toggle-confirmation a, ui
+		as ui-state-the-end
+			cycle-the-end a, ui
+	as start
+		match ui = a.ui-state
+		as ui-state-dialog
+			did-not-use-a-turn dialog-next a
+		as ui-state-initial
+			exit-initial-state a
+		as ui-state-normal
+			pause a
+		as ui-state-item-select
+			pause a
+		as ui-state-throw-select
+			pause a
+		as ui-state-paused
+			unpause a, ui
+		as ui-state-confirmation
+			confirm-confirmation a, ui
+		as ui-state-the-end
+			cycle-the-end a, ui
+	as unknown
+		match ui = a.ui-state
+		as ui-state-dialog or ui-state-initial or ui-state-confirmation or ui-state-the-end
+			did-not-use-a-turn a
+		as ui-state-normal or ui-state-item-select or ui-state-throw-select
+			pause a, explain-controls
+		as ui-state-paused
+			if ui.kind == explain-controls
+				unpause a, ui
+			else
+				change-ui-state a, set::ui-state-paused ui, kind, explain-controls
+-cycle-the-end apply-input-result(a game, ui ui-state-the-end) game-change-effects
+	change-ui-state a, ui-state-the-end next-cycle ui.kind
+
+-toggle-confirmation apply-input-result(a game, ui ui-state-confirmation) game-change-effects
+	change-ui-state a, modify ui, confirmed, it.toggle
+-abort-confirmation apply-input-result(a game) game-change-effects
+	change-ui-state a, default-paused a, main
+-confirm-confirmation apply-input-result(a game, ui ui-state-confirmation) game-change-effects
+	match ui.confirmed
+	as no
+		abort-confirmation a
+	as yes
+		updated = match ui.kind
+		as difficulty
+			change-difficulty a, ui.kind
+		else
+			the::game-change-effects.delete-save := true
+			set a, persistent-state, new-game a.seed
+		reload-current-area updated
+		updated
+		then set ui-state, ui-state-normal
+		then did-not-use-a-turn
+
+-exit-initial-state apply-input-result(a game) game-change-effects
+	did-not-use-a-turn if a.area == garden and a.persistent-state.progress-flags == ()
+		start-dialog a, beginning-of-game
+	else
+		set a, ui-state, ui-state-normal
+
+-defrost apply-input-result?(a game) game-change-effects
+	do if is-unable-to-move a.player
+	used-a-turn player-statuses-dissipate a
+
+-player-statuses-dissipate game(a game) game-change-effects
+	recovered-from-crying mut = false
+	res = modify a, player * statuses, of statuses
+		map-optionally statuses, of status, turns-remaining
+			if turns-remaining == 0
+				match status
+				as crying
+					recovered-from-crying := true
+				as frozen
+					show-animation ice-shatter a.player.pos
+				else
+					()
+				()
+			else
+				status, turns-remaining - 1
+	trigger-dialog-on-progress-flag res, recovered-from-crying, has-recovered-from-pepper, {first-pepper-recovery}
+
+-not-allowed apply-input-result(a game) game-change-effects
+	play-sound nowhere, not-allowed
+	did-not-use-a-turn a
+
+-change-ui-state apply-input-result(a game, new-state ui-state) game-change-effects
+	play-sound nowhere, menu
+	did-not-use-a-turn set a, ui-state, new-state
+
+-pause apply-input-result(a game) game-change-effects
+	pause a, main
+-pause apply-input-result(a game, kind paused-kind) game-change-effects
+	sync-play-time
+	pause-music
+	change-ui-state a, default-paused a, kind
+-default-paused ui-state-paused(a game, kind paused-kind)
+	active: difficulty
+	next-difficulty: a.difficulty
+	should-reset: no
+	kind: kind
+-unpause apply-input-result(a game, ui ui-state-paused) game-change-effects
+	reset-play-time
+	unpause-music
+	change-ui-state a, if ui.should-reset == yes
+		ui-state-confirmation confirm-reset, no
+	elif ui.next-difficulty != a.difficulty
+		ui-state-confirmation ui.next-difficulty, no
+	else
+		ui-state-normal
+-try-drop-pillow apply-input-result(a game) game-change-effects
+	next = a.player.pos + a.player.dir
+	if can-drop-pillow a, next
+		used-a-turn drop-pillow a, next
+	else
+		not-allowed a
+-can-drop-pillow bool(a game, pos grid-pos)
+	a.ground-minus-safe[pos] and not a.exclusive-entities[pos]
+-drop-pillow game(a game, pos grid-pos)
+	assert can-drop-pillow a, pos
+	a
+	then set player * is-holding-pillow, false
+	then modify exclusive-entities, it ~ pillow pos
+
+-pressed-a-normal apply-input-result(a game) game-change-effects, random
+	next = a.player.pos + a.player.dir
+	entity = a.exclusive-entities[next]
+	# Allow talking to slugs (but not picking them up) even when holding a pillow
+	if is-holding-pillow a.player and not (entity and slug entity and not can-pick-up-slug a, entity)
+		try-drop-pillow a
+	elif entity
+		match entity
+		as block
+			if entity.lit != never-lit
+				used-a-turn toggle-block-lit a, next, entity
+			else
+				did-not-use-a-turn a
+		as breakable-wall
+			did-not-use-a-turn a
+		as ground-equipment
+			used-a-turn pick-up-equipment a, entity
+		as ground-flashlight-part
+			used-a-turn pick-up-flashlight-part a, entity
+		as ground-item
+			try-pick-up-item a, entity
+		as harley
+			talk-to-harley a, entity
+		as lit-bomb
+			try-pick-up-item a, entity
+		as pillow
+			if a.safe[a.player.pos]
+				not-allowed a
+			else
+				used-a-turn pick-up-pillow a, entity
+		as slug
+			if is-sleeping entity
+				used-a-turn wake-up-slug a, next
+			elif some entity.heads, it.pos == next
+				if condition = slug-condition a, entity
+					did-not-use-a-turn start-dialog a, slug-condition-dialog entity, condition
+				elif is-dizzy entity
+					did-not-use-a-turn start-dialog a, slug-dizzy-dialog entity
+				elif is-frozen entity
+					did-not-use-a-turn start-dialog a, slug-frozen-dialog entity
+				elif can-pick-up-slug a, entity
+					try-pick-up-item a, entity
+				else
+					a
+					then modify exclusive-entities, of e
+						update-entity-at e, entity.positions[0].pos, slug-face-player entity, a.player
+					then start-dialog slug-dialog a, entity
+					then modify has-talked-to-slug, {it ~ (entity.id, it[entity.id] + 1)}
+					then did-not-use-a-turn
+			else
+				did-not-use-a-turn a
+		as sparkler
+			not-allowed a
+		as valve
+			play-sound next, valve
+			used-a-turn turn-shower-on-or-off a
+		as warp
+			did-not-use-a-turn a
+	else
+		did-not-use-a-turn a
+
+-slug-face-player slug(slug slug, player player)
+	if is-big slug
+		if is-next-to slug.active-head.pos, player.pos then slug else turn-around slug
+	else
+		set slug, dir, -player.dir
+
+-can-pick-up-slug bool(game game, slug slug)
+	get-chaseable-harley game and not is-npc slug
+
+-talk-to-harley apply-input-result(a game, h harley) game-change-effects
+	if h.state != waiting
+		a
+		then modify times-talked-to-harley, {saturating-add it, 1}
+		then start-dialog harley-running-dialog a.times-talked-to-harley
+		then used-a-turn
+	else
+		pause-music
+		did-not-use-a-turn if post-game a
+			start-dialog a, harley-post-game-dialog
+		else
+			a
+			then set inventory, ()
+			then modify area-state, it.set-final-state
+			then start-dialog harley-initial-dialog a
+
+-toggle-block-lit game(a game, pos grid-pos, tapped-block block) game-change-effects, random
+	new-entities = update-without-moving a.exclusive-entities, of block
+		if block block and (block == tapped-block or is-next-to block.occupied-space, tapped-block.occupied-space)
+			modify block, lit, it.toggle
+		else
+			block
+	puzzle-index = find-index! a.puzzles, it.bounds[pos]
+	puzzle = a.puzzles[puzzle-index]
+	won = every new-entities, of block
+		if block block and overlaps block.occupied-space, puzzle.bounds
+			block.lit == lit
+		else
+			true
+	res = set a, exclusive-entities, new-entities
+	if won
+		win-puzzle res, puzzle-index
+	else
+		play-sound pos, sound-id: block-light.to, pitch: vary-pitch 0.5
+		res
+
+-turn-shower-on-or-off game(a game) game-change-effects, random
+	res = modify a, shower, {not it}
+	res
+	then if res.shower then set slimy, ()
+	then if res.shower then modify player * statuses, it - perfume
+	then modify exclusive-entities, of entities
+		near-player = to::grid-set (center: a.player.pos, radius: 16)::grid-rect
+		available-slug-positions mut grid-set = a.maze-ground-minus-safe - near-player - res.exclusive-entities.set
+		attempt-updates entities,
+			plan-update: of entity
+				do if overlaps res.active-fire-or-flood-tiles, entity.occupied-space else entity
+				match entity
+				as ground-item or lit-bomb
+					pos = entity.occupied-space.bounds.center
+					show-wasted-item pos, (if res.shower then splash else burn-up), valve
+					()
+				as slug
+					pos = entity.active-head.pos
+					play-sound pos, splash
+					forbid is-big entity # No big slugs in the bathroom
+					show-animation splash false, if res.shower
+						# For a flood, it splashes into the water right there.
+						pos
+					else
+						# For a fire, it jumps into the nearest water.
+						nearest-outside a.ground, pos
+					new-pos = random available-slug-positions
+					available-slug-positions -:= new-pos
+					set::slug entity, positions, (new-pos,)
+				else
+					entity
+			on-conflict: {throw unreachable}
+	then maybe-start-dialog if res.active-fire-or-flood-tiles[a.player.pos] then lose-that-was-stupid
+
+-wake-up-slug game(a game, slug-pos grid-pos) game-change-effects
+	slug = slug! a.exclusive-entities[slug-pos]!
+	if some slug.occupied-space, a.smoke[it].?kind == sleep
+		start-dialog a, player-fails-to-wake-up-slug slug
+	else
+		a
+		then start-dialog player-wakes-up-slug slug
+		then modify exclusive-entities * slug-pos.entity-at, {woken-up-slug it.slug!, a.player}
+
+-woken-up-slug slug(slug slug, player player)
+	slug
+	then if slug.positions.size == 1 then set dir, assert-exact-dir4 player.pos - slug.active-head.pos
+	then modify flags_, {it & ~sleeping | just-woke-up}
+	then set turns-until-recovery, 0
+
+-dialog-next game(a game) game-change-effects
+	ui = ui-state-dialog! a.ui-state
+	rest dialog-entry[] = ui.remaining[1 .. end].to
+	set a, ui-state, if any rest
+		do-dialog-pre-effect rest[0]
+		ui-state-dialog rest
+	else
+		ui-state-normal
+	then if effect = ui.remaining[0].post-effect then do-dialog-effect effect
+
+-do-dialog-effect game(a game, effect dialog-effect) game-change-effects
+	match effect
+	as lose
+		reload-current-area a
+		modify a, times-slugged, {saturating-add it, 1}
+	as music-id
+		play-music effect
+		a
+	as pause-music
+		pause-music
+		a
+	as set-harley-state
+		modify a, exclusive-entities, of e
+			harley = first! e, it.harley
+			update-entity-at e, harley.pos, set harley, state, waiting
+	as unpause-music
+		unpause-music
+		a
+	as use-napkin
+		a
+		then modify exclusive-entities, it - effect.slugged-by
+		then modify inventory, {remove-first! it, napkin}
+	as the-end
+		# You won't see this since the ui-state covers it,
+		# but this triggers a save and the post-game will resume in the foyer.
+		# (The save happens after the following edits to progress-flags and inventory)
+		go-to-next-area foyer
+		a
+		then modify progress-flags, it | post-game
+		# Can't take slugs-as-items with you into the postgame
+		then set inventory, ()
+		then set ui-state, ui-state-the-end none
+
+-remove-first[t] t[]?(a t[], value t) t equal
+	if index = index-of a, value
+		remove-at a, index
+
+-throw-item apply-input-result(a game, ui ui-state-throw-select) game-change-effects, random
+	pos = ui.selected-throw-position
+	item = selected-item a
+	res apply-input-result? = if pos == a.player.pos
+		do if basic-item item and (is-edible item or item == soap)
+		play-sound-after-throw pos, if item == soap then slip else eat
+		(if item == cookie then a else modify a, player, it.make-slipped)
+		then finish-using-item
+		then used-a-turn
+	elif can-throw-items-into-water a and not a.ground[pos]
+		wasted-item a, ui, splash
+	elif e = a.exclusive-entities[pos]
+		if harley e
+			if is-edible item
+				play-sound-after-throw pos, eat
+				did-not-use-a-turn finish-using-item a
+			elif slug-id item
+				throw-slug-at-harley a, e, item
+		elif slug e and basic-item item and updated = slug-get-item e, item, a.player
+			a
+			then modify exclusive-entities, of entities
+				update-entity-at entities, e.active-head.pos, updated
+			then finish-using-item
+			then did-not-use-a-turn
+	elif a.active-fire-or-flood-tiles[pos]
+		wasted-item a, ui, if a.shower then splash else burn-up
+	elif slug-id item and not a.ground[pos]
+		()
+	else
+		new-entity exclusive-entity = match item
+		as basic-item
+			if item == sparkler
+				sparkler pos, sparkler-max-turns
+			elif bomb = as-bomb item and not a.shower
+				lit-bomb pos, thrown-bomb-turns-until-boom, thrown-bomb-turns-until-boom, bomb
+			else
+				ground-item pos, item
+		as slug-id
+			thrown-slug-lands item, a.player.pos, pos
+		res =
+			a
+			then modify exclusive-entities, it ~ new-entity
+			then finish-using-item
+		if x = slugs-go-for-item item
+			new-game: res, used-turn: true, thrown-item: x
+		else
+			used-a-turn res
+	if res
+		play-sound a.player.pos, throw_
+		animate-throw item: item, thrown-from: a.player.pos, thrown-to: pos
+		res
+	else
+		not-allowed a
+
+-thrown-slug-lands slug(slug slug-id, player grid-pos, pos grid-pos)
+	id: slug
+	flags_: dizzy
+	positions: (pos,)
+	dir: closest-dir4 pos - player
+	chasing: ()
+	turns-until-recovery: 1
+	turns-until-beam: 0
+	turns-until-bomb: 0
+
+-wasted-item-kind enum(burn-up, splash)
+-to sound-id(a wasted-item-kind)
+	match a
+	as burn-up then burn-up
+	as splash then splash
+-wasted-item apply-input-result(a game, ui ui-state-throw-select, kind wasted-item-kind) game-change-effects
+	show-wasted-item ui.selected-throw-position, kind, thrown
+	used-a-turn finish-using-item a
+
+-wasted-item-cause enum(thrown, valve)
+-show-wasted-item void(pos grid-pos, kind wasted-item-kind, cause wasted-item-cause) game-change-effects
+	delay = cause == thrown
+	play-sound pos, kind.to, if delay then throw-animation-duration
+	show-animation if kind == splash then splash delay, pos else burn-up delay, pos
+
+-play-sound-after-throw void(pos grid-pos, sound sound-id) game-change-effects
+	play-sound pos, sound-id: sound.to, delay: throw-animation-duration
+
+-can-throw-items-into-water bool(a game)
+	a.area == bathroom
+
+-use-item apply-input-result(a game, ui ui-state-item-select) game-change-effects, random
+	match item = a.inventory[ui.selected-item-index]
+	as basic-item
+		match item
+		as napkin
+			not-allowed a
+		as perfume
+			used-a-turn use-perfume a
+		as ice-soda
+			used-a-turn use-ice-soda a
+		as soda
+			used-a-turn use-soda a
+		else
+			change-ui-state a, ui-state-throw-select a.selected-item-index, a.player.pos
+	else
+		change-ui-state a, ui-state-throw-select a.selected-item-index, a.player.pos
+
+-use-perfume game(a game) game-change-effects
+	play-sound a.player.pos, perfume
+	a
+	then modify player, {make-status it, perfume, player-perfume-turns}
+	then spread-perfume
+	then finish-using-item
+-use-soda game(a game) game-change-effects, random
+	ray, endpoint = player-fires-beam a
+	show-animation beam soda, a.player.dir, a.player.pos, endpoint
+	play-sound a.player.pos, soda
+	if slug-id endpoint
+		slug = make-slug-dizzy a.exclusive-entities[ray.endpoint]!.slug!
+		new-slug = if is-big slug
+			slug
+		else
+			new-pos mut = ray.endpoint
+			walkable = physically-walkable slug-sets a, ()
+			while
+				next = new-pos + ray.dir
+				if walkable[next] and not a.exclusive-entities[next]
+					new-pos := next
+					true
+			set slug, positions, (new-pos,)
+		a
+		then modify exclusive-entities, of entities
+			try-move! entities, ray.endpoint, new-slug, {throw unreachable}
+		then finish-using-item
+		then start-dialog if spits-soda endpoint then player-soda-on-soda-slug else random player-soda-dialogs
+	else
+		finish-using-item a
+
+| Returns the beam length and any slug it hits
+-player-fires-beam (ray4-segment, beam-endpoint)(game game)
+	start = game.player.pos
+	dir = game.player.dir
+	walls = game.walls
+	slug mut slug-id? = ()
+	distance nat16? = find 1::nat16 .. max-beam, of i
+		pos = start + dir.to::grid-displacement * i.to
+		if walls[pos]
+			true
+		elif e = game.exclusive-entities[pos]
+			slug := e.slug.?id
+			true
+	segment ray4-segment =
+		ray: start, dir
+		distance: distance else max-beam
+	segment, (slug else segment.endpoint)
+
+-use-ice-soda game(a game) game-change-effects, random
+	ray, endpoint = player-fires-beam a
+	show-animation beam ice, a.player.dir, a.player.pos, endpoint
+	play-sound a.player.pos, ice-beam
+	pos = ray.endpoint
+	if e = a.exclusive-entities[pos] and slug e
+		if is-ice e
+			finish-using-item a
+			then start-dialog player-ice-soda-at-ice-slug-dialog e
+		else
+			a
+			then modify exclusive-entities, {update-entity-at it, pos, make-slug-frozen e, a.shower, pos}
+			then finish-using-item
+			then start-dialog random player-ice-dialogs
+	else
+		finish-using-item a
+
+-stop-chasing slug(a slug)
+	set a, chasing, ()
+-make-slug-sleep slug(a slug)
+	make-slug-sleep-or-dizzy-or-frozen a, sleeping, slug-sleeping-turns
+-get-hare-plush slug(a slug)
+	a
+	then stop-chasing
+	then modify flags_, it | sleeping | holding-hare-plush
+	then set turns-until-recovery, max-value
+-make-slug-dizzy slug(a slug)
+	make-slug-sleep-or-dizzy-or-frozen a, dizzy, slug-dizzy-turns
+-make-slug-frozen slug(a slug, shower bool, pos grid-pos)
+	# We only render the main head frozen, so make this head the main head
+	slug = if a.active-head.pos == pos then a else turn-around a
+	make-slug-sleep-or-dizzy-or-frozen slug, frozen, slug-frozen-turns shower
+-make-slug-sleep-or-dizzy-or-frozen slug(a slug, flag slug-flags, turns nat8)
+	a
+	then modify flags_, it & ~(sleeping | dizzy | frozen) | flag
+	then stop-chasing
+	then set turns-until-recovery, turns
+
+-release-smoke smoke sparse-grid(center grid-pos, kind bomb-kind)
+	radius = bomb-smoke-radius kind
+	make (positions-inside (center.to, radius)), of pos
+		lifetime float32 = bomb-smoke-max-lifetime.to * (1 - (distance pos, center) / radius)
+		time-to-live: to::nat8 round lifetime
+		kind: kind.to
+
+-finish-using-item game(a game)
+	modify a, inventory, {remove-at it, a.selected-item-index}
+	then set ui-state, ui-state-normal
+
+-apply-input-direction apply-input-result(a game, input dir4, holding-a bool) game-change-effects, random
+	match ui = a.ui-state
+	as ui-state-dialog or ui-state-initial or ui-state-the-end
+		did-not-use-a-turn a
+	as ui-state-normal
+		defrost a else apply-input-direction-normal a, input, holding-a
+	as ui-state-item-select
+		new-pos = (item-grid-pos ui.selected-item-index, a.max-inventory) + input
+		did-not-use-a-turn if index = item-index new-pos, a.max-inventory and index::nat < a.inventory.size
+			set a, ui-state, ui-state-item-select index
+		else
+			a
+	as ui-state-throw-select
+		next = ui.selected-throw-position + input
+		a
+		then if a.throwable-set[next] then set ui-state, ui-state-throw-select ui.selected-item-index, next
+		then did-not-use-a-turn
+	as ui-state-paused
+		match input
+		as north
+			maybe-change-active a, ui, prev
+		as south
+			maybe-change-active a, ui, next
+		as west
+			change-current-selected a, ui, prev
+		as east
+			change-current-selected a, ui, next
+	as ui-state-confirmation
+		if dir = as-prev-next input and walk ui.confirmed, dir
+			toggle-confirmation a, ui
+		else
+			did-not-use-a-turn a
+
+-as-prev-next prev-next?(dir dir4)
+	match dir
+	as west then prev
+	as east then next
+	else then ()
+
+-change-current-selected apply-input-result(a game, ui ui-state-paused, dir prev-next) game-change-effects
+	match ui.active
+	as difficulty
+		maybe-change-difficulty a, ui, dir
+	as reset
+		maybe-change-should-reset a, ui, dir
+
+-maybe-change-difficulty apply-input-result(a game, ui ui-state-paused, dir prev-next) game-change-effects
+	if next = walk ui.next-difficulty, dir
+		change-ui-state a, set ui, next-difficulty, next
+	else
+		did-not-use-a-turn a
+-maybe-change-should-reset apply-input-result(a game, ui ui-state-paused, dir prev-next) game-change-effects
+	if next = walk ui.should-reset, dir
+		change-ui-state a, set ui, should-reset, next
+	else
+		did-not-use-a-turn a
+-maybe-change-active apply-input-result(a game, ui ui-state-paused, dir prev-next) game-change-effects
+	if next = walk ui.active, dir
+		change-ui-state a, set ui, active, next
+	else
+		did-not-use-a-turn a
+
+-apply-input-direction-normal apply-input-result(a game, input dir4, is-hodling-a bool) game-change-effects, random
+	p = a.player
+	if p.dir == input
+		try-move-in-direction (set a, player * dir, input), input, false, is-hodling-a
+	elif p.dir == -input and is-hodling-a
+		try-move-in-direction a, input, true, true
+	else
+		did-not-use-a-turn set a, player * dir, input
+-try-move-in-direction apply-input-result
+	a game
+	dir dir4
+	is-walking-backwards bool
+	holding-a bool
+do game-change-effects, random
+	if a.slimy[a.player.pos] and random-chance 1, slip-on-slime-chance
+		play-sound a.player.pos, slip, player-move-duration
+		used-a-turn modify a, player, it.make-slipped
+	elif warp = a.exclusive-entities[a.player.pos] and warp warp and warp.dir == dir
+		play-sound a.player.pos, door
+		did-not-use-a-turn warp-to a, warp.next-area
+	else
+		try-move-player a, dir, is-walking-backwards, holding-a
+
+-pick-up-pillow game(a game, pillow pillow)
+	a
+	then set player * is-holding-pillow, true
+	then modify exclusive-entities, it - pillow
+-ground-item-like union(ground-item, lit-bomb, slug)
+-pos grid-pos(a ground-item-like)
+	match a
+	as ground-item
+		a.pos
+	as lit-bomb
+		a.pos
+	as slug
+		a.active-head.pos
+-to exclusive-entity(a ground-item-like)
+	match a
+	as ground-item then a
+	as lit-bomb then a
+	as slug then a
+-item item(a ground-item-like)
+	match a
+	as ground-item
+		a.item
+	as lit-bomb
+		as-item a.kind
+	as slug
+		a.id
+-pick-up-equipment game(a game, entity ground-equipment) game-change-effects
+	play-sound entity.pos, got-major-item
+	a
+	then modify exclusive-entities, it - entity
+	then modify equipment, it | entity.equipment
+	then start-dialog dialog-for-equipment entity.equipment
+-pick-up-flashlight-part game(a game, entity ground-flashlight-part) game-change-effects
+	play-sound entity.pos, got-major-item
+	new-parts = a.flashlight-parts | entity.part
+	a
+	then modify exclusive-entities, it - entity
+	then set flashlight-parts, new-parts
+	then start-dialog if is-full new-parts
+		completed-flashlight a.visited-areas[basement]
+	else
+		got-flashlight-part entity.part
+
+-try-pick-up-item apply-input-result(a game, entity ground-item-like) game-change-effects
+	if inventory-is-full a
+		did-not-use-a-turn start-dialog a, cant-pick-up-item-inventory-is-full
+	else
+		used-a-turn pick-up-item a, entity
+-pick-up-item game(a game, entity ground-item-like) game-change-effects
+	forbid inventory-is-full a
+	item = item entity
+	play-sound entity.pos, got-item
+	a
+	then modify exclusive-entities, it - entity.to
+	then modify inventory, it ~ item
+	then trigger-dialog-on-first-item item
+
+-trigger-dialog-on-first-item game(a game, item item) game-change-effects
+	do if basic-item item and dialog = dialog-for-item item else a
+	do unless a.has-picked-up-items[item] else a
+	a
+	then modify has-picked-up-items, it | item
+	then start-dialog dialog
+
+-try-move-player apply-input-result
+	a game
+	# Direction player is moving in; may be opposite of facing direction
+	dir dir4
+	walking-backwards bool
+	holding-a bool
+do game-change-effects, random
+	old-pos = a.player.pos
+	new-pos = old-pos + dir
+	# As a failsafe, allow walking anywhere if somehow not on the ground already
+	do if not a.ground[old-pos] or a.ground[new-pos] else did-not-use-a-turn a
+	get-equipment mut ground-equipment? = ()
+	get-flashlight-part mut ground-flashlight-part? = ()
+	get-item mut ground-item-like? = ()
+	get-pillow mut pillow? = ()
+	cant-pick-up-item-dialog mut = false
+	wake-up-slug mut = false
+	# If already within a block, you can walk within it, or exit through the tunnel exit
+	inside-tunnel block? = ?block a.exclusive-entities[old-pos]
+	walking-within-tunnel bool = inside-tunnel and inside-tunnel.occupied-space[new-pos]
+	exiting-tunnel = inside-tunnel and (is-end-of-tunnel inside-tunnel, old-pos) == dir
+	warp mut area? = ()
+	walking-into-tunnel mut = false
+	try-get-item = of::bool item ground-item-like
+		if item.item == soap
+			# Player will actually trip instead
+			get-item := item
+			true
+		elif is-holding-pillow a.player
+			false
+		elif inventory-is-full a
+			cant-pick-up-item-dialog := true
+			false
+		else
+			get-item := item
+			true
+	ok = if entity = a.exclusive-entities[new-pos]
+		match entity
+		as block
+			if walking-backwards
+				# Walk backwards into a tunnel
+				if tunnel-dir = is-end-of-tunnel entity, new-pos
+					walking-into-tunnel := true
+					tunnel-dir == -dir
+			else
+				# Will handle pushing this block below
+				true
+		as breakable-wall
+			false
+		as harley
+			false
+		as ground-equipment
+			get-equipment := entity
+			true
+		as ground-flashlight-part
+			get-flashlight-part := entity
+			true
+		as ground-item
+			try-get-item[entity]
+		as lit-bomb
+			try-get-item[entity]
+		as pillow
+			unless is-holding-pillow a.player or walking-backwards
+				get-pillow := entity
+				true
+		as slug
+			if is-sleeping entity
+				wake-up-slug := true
+			false
+		as sparkler
+			false
+		as valve
+			false
+		as warp
+			if not entity.dir
+				warp := entity.next-area
+			true
+	else
+		true
+	do if ok else
+		did-not-use-a-turn if cant-pick-up-item-dialog
+			start-dialog a, cant-pick-up-item-inventory-is-full
+		elif wake-up-slug
+			wake-up-slug a, new-pos
+		else
+			a
+	do unless inside-tunnel and not walking-within-tunnel and not exiting-tunnel else did-not-use-a-turn a
+	block-pos = if walking-backwards then old-pos - dir else new-pos
+	new-block mut grid-set? = ()
+	# Handle pushing or pulling a block
+	new-entities exclusive-entities? = if block = a.exclusive-entities[block-pos] and block block
+		if walking-within-tunnel or inside-tunnel and walking-backwards
+			a.exclusive-entities
+		elif not walking-backwards and not holding-a and tunnel = is-end-of-tunnel block, block-pos and tunnel == -dir
+			walking-into-tunnel := true
+			a.exclusive-entities
+		elif not is-holding-pillow a.player
+			# Push or pull the block
+			new-block := block.occupied-space + dir
+			do if contains-all a.ground-minus-safe, new-block!
+			do if res = try-move a.exclusive-entities, block-pos, dir, {dont-move}
+			res
+	else
+		a.exclusive-entities
+	in-tunnel = walking-into-tunnel or walking-within-tunnel
+	do if in-tunnel or not a.active-fire-or-flood-tiles[new-pos] else did-not-use-a-turn a
+	do if new-entities else did-not-use-a-turn a
+	unless get-item then play-sound new-pos, step-sound-for-area a.area
+	animate-move-player a.player.pos
+	?animate-block new-block, dir
+	a
+	then set player * pos, new-pos
+	then if should-drop-breadcrumb a, old-pos then modify breadcrumbs, it | old-pos
+	then set exclusive-entities, new-entities
+	then trigger-dialog-on-progress-flag a.slimy[new-pos], has-stepped-on-slimy, {first-step-on-slimy}
+	# For directional warps, they would have already been handled in {try-move-in-direction}
+	then if warp then warp-stairs warp!
+	then if get-equipment then pick-up-equipment get-equipment!
+	then if get-flashlight-part then pick-up-flashlight-part get-flashlight-part!
+	then if get-item then get-item-or-slip get-item!
+	then if get-pillow then pick-up-pillow get-pillow!
+	then if a.puzzle-win-switches[new-pos] and not in-tunnel then win-puzzle find-index! a.puzzles, it.bounds[new-pos]
+	then if a.safe[new-pos] and a.player.is-holding-pillow then drop-pillow old-pos
+	then if a.area == basement and not has-completed-flashlight a then dark-basement dir, new-pos
+	then used-a-turn
+
+-should-drop-breadcrumb bool(a game, pos grid-pos)
+	do if a.equipment[breadcrumbs]
+	do if a.maze-ground-minus-safe[pos]
+	not a.active-or-potential-fire-or-flood-tiles[pos]
+
+-get-item-or-slip game(a game, item ground-item-like) game-change-effects
+	if item.item == soap
+		play-sound item.pos, slip
+		a
+		then modify player, it.make-slipped
+		then modify exclusive-entities, it - item.to
+	else
+		pick-up-item a, item
+
+-dark-basement game(a game, dir dir4, new-pos grid-pos) game-change-effects
+	y = to::nat8 new-pos.y
+	y0, y1, y2, y3 = dark-basement-dialog-steps
+	if a.progress-flags[has-been-slugged-in-dark-basement]
+		if y >= y3
+			start-dialog a, lose-dark-basement-again
+		else
+			a
+	elif y >= y3
+		start-dialog a, lose-dark-basement
+	elif dir == north
+		if y == y0
+			start-dialog a, dark-basement-1
+		elif y == y1
+			start-dialog a, dark-basement-2
+		elif y == y2
+			start-dialog a, dark-basement-3
+		else
+			a
+	else
+		a
+
+-warp-stairs game(a game, area area) game-change-effects
+	play-sound nowhere, stairs
+	set-override-prev-game a
+	warp-to a, area
+
+-warp-to game(a game, area area) game-change-effects
+	stop-music fade-to-black-time
+	go-to-next-area area
+	if a.visited-areas[area]
+		a
+	else
+		a
+		then modify visited-areas, it | area
+		then maybe-start-dialog dialog-for-area area
+
+-music-for-area music-id(area area)
+	match area
+	as backyard
+		garden
+	as basement
+		basement
+	as bathroom
+		bathroom
+	as bedroom
+		bedroom
+	as foyer
+		foyer
+	as garden
+		garden
+	as kitchen
+		kitchen
+
+-win-puzzle game(a game, puzzle-index nat) game-change-effects
+	puzzle = a.puzzles[puzzle-index]
+	play-sound a.player.pos, puzzle-solved
+	trigger-save
+	a
+	then set player * is-holding-pillow, false
+	then set checkpoint, a.player.pos
+	then modify fire, it - puzzle.bounds
+	then modify flood, it - puzzle.bounds
+	then modify puzzle-win-switches, it - puzzle.bounds
+	then modify exclusive-entities, of entities
+		remove-overlapping-where entities, puzzle.expanded-bounds, {block it or breakable-wall it or pillow it}
+	then modify puzzles, {remove-at it, puzzle-index}
+	then add-solved-puzzle puzzle.placement
+
+-update-smoke game(a game)
+	if shower a
+		set a, smoke, ()
+	else
+		modify a, smoke, of smoke
+			for? pos, s in smoke
+				unless s.time-to-live == 0
+					pos, modify s, time-to-live, it - 1
+		then spread-perfume
+
+-spread-perfume game(a game)
+	do if is-perfumed a.player else a
+	modify a, smoke, of smoke
+		smoke ~~ for pos in all-positions center: a.player.pos, size: (3, 3)
+			pos, time-to-live: bomb-smoke-max-lifetime, kind: perfume
+
+-update-non-moving-entities game(a game) game-change-effects, random
+	new-smoke mut smoke sparse-grid = ()
+	new-entities = update-without-moving a.exclusive-entities, of x
+		match x
+		as lit-bomb
+			if a.shower
+				x
+			elif x.turns-until-boom == 0
+				play-sound x.pos, bomb
+				new-smoke ~~:= release-smoke x.pos, x.kind
+				()
+			else
+				# Bombs get louder as they approach boom
+				play-sound x.pos, sparkler-sounds 1 - (x.turns-until-boom - 1).to / x.max-turns.to
+				modify x, turns-until-boom, it - 1
+		as sparkler
+			unless x.turns-remaining == 0
+				# Sparklers get quieter as they run out
+				play-sound x.pos, sparkler-sounds x.turns-remaining.to / sparkler-max-turns.to
+				modify x, turns-remaining, it - 1
+		else
+			x
+	a
+	then set exclusive-entities, new-entities
+	then modify smoke, it ~~ new-smoke
+
+-item-blocks-slug-walkable bool(a exclusive-entity)
+	match a
+	as ground-item
+		not slugs-go-for-item a.item and a.item != soap
+	as harley
+		false
+	else
+		true
+
+-slug-sets slug-sets(a game, thrown-item chaseable-item?)
+	pepper-and-perfume = positions-where a.smoke, it.b.kind.slugs-avoid-smoke
+	slugs-set = positions-where a.exclusive-entities, it.slug
+	walkable-plus-blockers = a.ground-minus-safe - a.active-fire-or-flood-tiles
+	blocking-entities = positions-where a.exclusive-entities, it.item-blocks-slug-walkable
+	blockers = blocking-entities | if get-chaseable-harley a then (a.player.pos,)
+	physically-walkable = walkable-plus-blockers - blockers
+	physically-walkable-minus-pepper = physically-walkable - pepper-and-perfume
+	walkable = physically-walkable-minus-pepper
+	should-chase-player: unless get-chaseable-harley a then a.player.pos
+	sleep-smoke: positions-where a.smoke, it.b.kind == sleep
+	pepper-and-perfume: pepper-and-perfume
+	physically-walkable: physically-walkable
+	physically-walkable-minus-pepper: physically-walkable-minus-pepper
+	walkable-plus-blockers: walkable-plus-blockers
+	walkable-for-chase-item: physically-walkable-minus-pepper - a.player.pos
+	blocks-sight-loose: a.smoke.set
+	blocks-sight-strict: a.smoke.set | a.walls
+	blocks-beam: a.smoke.set | a.walls | blocking-entities
+	distances-to-circle-around-player:
+		# Include slugs-set here so that slugs don't give up on going to the player
+		# just because another slug is also doing so using the same path
+		find-distances-to-any (physically-walkable | slugs-set),
+			positions-inside center: a.player.pos.to, radius: a.player-gravity-radius
+	slug-chaseable-items: map-optionally a.exclusive-entities, of item
+		if ground-item item and slugs-go-for-item item.item and walkable[item.pos]
+			item
+	thrown-item: thrown-item
+
+-slugs-move game(a game, thrown-item chaseable-item?) game-change-effects, random
+	sets = slug-sets a, thrown-item
+	all-effects mut slug[slug-affects-player] = ()
+	tutorial-slug-triggered mut slug? = ()
+	new-entities mut = attempt-updates a.exclusive-entities,
+		plan-update: of entity
+			if slug entity
+				new-slug, effect = move-slug a, entity, sets
+				if effect
+					all-effects ~:= effect, new-slug
+				if entity.is-waiting-for-player and not new-slug.is-waiting-for-player
+					tutorial-slug-triggered := entity
+				new-slug
+			else
+				entity
+		on-conflict: of conflicting, old-entities
+			if (count conflicting, it.slug) > 1
+				# Randomly choose one to win
+				winner = random-index-where! conflicting, it.slug
+				# Slugs attempting to take the same position. Turn them around instead.
+				for i, nu in with-index conflicting
+					old = old-entities[i]
+					if slug old
+						if i == winner then nu else turn-around old
+					else
+						nu.occupied-space is old.occupied-space
+						nu
+			else
+				# Since slugs only move 1 space, at most 1 conflicting entity exists
+				conflicting.size is 2
+				slug-index = find-index! conflicting, it.slug
+				other-index nat = if slug-index == 1 then 0 else 1
+				old-slug = slug! old-entities[slug-index]
+				new-slug = slug! conflicting[slug-index]
+				new-other = conflicting[other-index]
+				resolved-slug slug, resolved-other exclusive-entity? = match new-other
+				as ground-item
+					if updated = slug-get-item new-slug, new-other.item, ()
+						updated, ()
+					else
+						old-slug.turn-around, new-other
+				else
+					old-slug.turn-around, new-other
+				if slug-index == 0 then resolved-slug, resolved-other else resolved-other, resolved-slug
+	# Don't drop bombs while the player is trying to solve a puzzle since that's distracting
+	unless is-inside-puzzle a
+		dropped-items exclusive-entity mut[] = ()
+		new-entities := update-without-moving new-entities, of entity
+			do if slug entity else entity
+			slug mut = entity
+			prev = position-behind slug
+			if is-holding-hare-plush slug and not is-unable-to-move slug
+				if new-entities[prev]
+					slug
+				else
+					dropped-items ~= ground-item prev, hazel-plush
+					modify slug, flags_, it & ~holding-hare-plush
+			else
+				if slug.turns-until-beam != 0
+					slug := modify slug, turns-until-beam, it - 1
+				if kind = drops-bombs slug and not is-unable-to-move slug and a.ground-minus-safe[prev]
+					if slug.turns-until-bomb == 0
+						# Can't drop a bomb if something occupies the space
+						turns = slug-dropped-bomb-turns-until-boom
+						dropped-items ~= lit-bomb prev, turns, turns, kind
+						set slug, turns-until-bomb, slug-drop-bomb-turns
+					else
+						modify slug, turns-until-bomb, it - 1
+				else
+					slug
+		for item in dropped-items
+			unless overlaps new-entities.set, item.occupied-space
+				new-entities ~:= item
+	a
+	then trigger-dialog-on-slug tutorial-slug-triggered, all-effects
+	then set exclusive-entities, new-entities
+	then if a.area == bathroom and not a.shower then slugs-leave-slime
+	then if all-effects[frozen] then modify player, {make-status it, frozen, player-frozen-turns a.area, a.shower}
+	then maybe-pushed-by-soda all-effects[pushed-by-soda]
+	then if slug = all-effects[slugged] then slugged slug
+
+-slugs-leave-slime game(a game) game-change-effects
+	new-slime = positions-where a.exclusive-entities, of entity
+		slug entity and not is-ice entity and not is-npc entity
+	animate-new-slime new-slime - a.slimy
+	modify a, slimy, it | new-slime
+
+-maybe-pushed-by-soda game(a game, slug slug?)
+	do if slug else a
+	new-pos mut = a.player.pos
+	dir = slug.active-head.dir
+	while
+		next = new-pos + dir
+		if a.ground[next] and not a.exclusive-entities[next]
+			new-pos := next
+			true
+	a
+	then set player * pos, new-pos
+	then modify player, it.make-sodad
+
+-slug-get-item slug?(slug slug, item basic-item, item-thrown-by-player player?) game-change-effects
+	pos = slug.active-head.pos
+	sound = of sound sound-id
+		play-sound pos, sound, if item-thrown-by-player then throw-animation-duration else slug-move-duration
+	match item
+	as cookie
+		sound[eat]
+		if item-thrown-by-player and is-sleeping slug
+			woken-up-slug slug, item-thrown-by-player
+		else
+			stop-chasing slug
+	as hazel-plush
+		unless is-sleeping slug
+			get-hare-plush slug
+	as lemon
+		sound[eat]
+		make-slug-dizzy slug
+	as soap
+		unless item-thrown-by-player
+			if is-big slug
+				slug
+			else
+				sound[slip]
+				make-slug-dizzy slug
+	else
+		()
+
+-throw-slug-at-harley apply-input-result(a game, harley harley, slug slug-id) game-change-effects
+	did-not-use-a-turn if move = find-harley-move a, harley
+		move-harley a, harley, move
+		then modify exclusive-entities, it ~ thrown-slug-lands slug, a.player.pos, harley.pos
+		then finish-using-item
+	else
+		pause-music
+		a
+		then modify-harley harley, set harley, state, slug-on-face
+		then start-dialog you-win
+
+-harley-moves game(a game) game-change-effects, random
+	do if harley = get-chaseable-harley a else a
+	if move = find-harley-move a, harley
+		play-sound move, if is-next-to move, harley.pos
+			step-sound-for-area a.area
+		else
+			sound-id: jump.to
+		move-harley a, harley, move
+	else
+		modify-harley a, harley, set harley, state, stuck
+-modify-harley game(a game, old harley, new harley)
+	modify a, exclusive-entities, of entities
+		update-entity-at entities, old.pos, new
+
+-find-harley-move grid-pos?(a game, harley harley)
+	steps grid-set = filter harley.pos.neighbors4, {is-allowed-harley-position a, it}
+	avoid grid-set = a.player.pos | positions-where a.exclusive-entities, it.slug
+	furthest-from steps, avoid or
+		jumps grid-set = filter harley.pos.bounds, {is-allowed-harley-position a, it}
+		furthest-from jumps, avoid
+
+-bounds grid-set(center grid-pos)
+	for dir in members::dir8[]
+		if d4 = dir.to::dir4?
+			center + d4 + d4
+		else
+			center + dir
+-is-allowed-harley-position bool(a game, pos grid-pos)
+	a.ground[pos] and not a.exclusive-entities[pos] and pos != a.player.pos
+-move-harley game(a game, harley harley, new-pos grid-pos) game-change-effects
+	animate-move-harley harley.pos
+	modify-harley a, harley, set harley, pos + state, (new-pos, moving)
+
+-position-behind grid-pos(a slug)
+	heads = a.heads
+	if h = only heads
+		h.pos - h.dir
+	else
+		heads[1].pos + heads[1].dir
+
+-make-slipped player(a player)
+	make-status a, slipped, player-slipped-turns
+-make-sodad player(a player)
+	make-status a, slipped, player-sodad-turns
+-make-status player(a player, value player-status, turns nat8)
+	modify a, statuses, it ~ (value, turns)
+
+-trigger-dialog-on-slug game(a game, slug slug?, effects slug[slug-affects-player]) game-change-effects, random
+	if s = effects[frozen]
+		start-dialog a, random ice-slug-dialogs s
+	elif s = effects[pushed-by-soda]
+		start-dialog a, random soda-slug-dialogs s
+	elif slug
+		match slug.id
+		as alice
+			trigger-dialog-on-progress-flag a, alice-has-seen-player, {first-slug}
+		as bob
+			trigger-dialog-on-progress-flag a, bob-has-seen-player, {second-slug}
+		else
+			a
+	else
+		a
+-trigger-dialog-on-progress-flag game
+	a game
+	condition bool
+	flag_ progress-flags?
+	dialog dialog-entry[] data()
+do game-change-effects
+	if condition
+		trigger-dialog-on-progress-flag a, flag_, dialog
+	else
+		a
+-trigger-dialog-on-progress-flag game(a game, flag_ progress-flags?, dialog dialog-entry[] data()) game-change-effects
+	if flag_ and game2 = trigger-progress-flag a, flag_
+		start-dialog game2, dialog[]
+	else
+		a
+-trigger-progress-flag game?(a game, flag_ progress-flags)
+	unless a.progress-flags[flag_]
+		modify a, progress-flags, it | flag_
+
+-maybe-start-dialog game(a game, d dialog-entry[]?) game-change-effects
+	if d then start-dialog a, d else a
+-start-dialog game(a game, d dialog-entry[]) game-change-effects
+	if ui-state-dialog a.ui-state
+		# This can happen if multiple things trigger dialog in the same turn.
+		# For example, getting slugged on the same turn you are hit by pepper smoke the first time.
+		# In that case the first dialog (getting slugged) wins
+		a
+	else
+		do-dialog-pre-effect d[0]
+		set a, ui-state, ui-state-dialog d
+
+do-dialog-pre-effect void(a dialog-entry) game-change-effects
+	if a.sound
+		play-sound nowhere, a.sound
+	elif sound = dialog-sounds-for a
+		play-sound nowhere, delay sound, a.delay-sound
+
+-slug-sets record
+	should-chase-player grid-pos?
+	sleep-smoke grid-set
+	pepper-and-perfume grid-set
+	| All positions that the slug can physically move to. This includes pepper / perfume.
+	physically-walkable grid-set
+	| All positions that a slug would actually go to if given a choice (and not already fleeing pepper)
+	physically-walkable-minus-pepper grid-set
+	| Walkable, plus things that block the slug but don't cause it to turn around
+	walkable-plus-blockers grid-set
+	| Omits player so slug does not get the player while trying to go for an item
+	| Omits non-chaseable items since they get in the way (the slug can't take them)
+	walkable-for-chase-item grid-set
+	blocks-sight-loose grid-set
+	blocks-sight-strict grid-set
+	blocks-beam grid-set
+	distances-to-circle-around-player nat8 bounded-grid
+	slug-chaseable-items ground-item[]
+	thrown-item chaseable-item?
+
+slug-affects-player enum(frozen, pushed-by-soda, slugged)
+-move-slug (slug, slug-affects-player?)(a game, slug slug, sets slug-sets) game-change-effects, random
+	main = active-head slug
+	if some slug.heads, sets.sleep-smoke[it.pos]
+		slug.make-slug-sleep, ()
+	elif is-unable-to-move slug
+		-
+			if slug.turns-until-recovery == 0
+				if is-frozen slug
+					show-animation ice-shatter slug.active-head.pos
+				make-able-to-move slug
+			elif slug.turns-until-recovery == max-value
+				slug
+			else
+				modify slug, turns-until-recovery, it - 1
+		- ()
+	elif is-npc slug
+		slug, ()
+	elif some slug.heads, sets.pepper-and-perfume[it.pos]
+		might-get-player a, slug,
+			slug
+			then stop-chasing
+			then slug-flees-pepper sets
+	elif n = nearest-reachable-item slug, sets
+		might-get-player a, slug,
+			slug
+			then start-chasing-item n.item
+			then move-slug-along-path n.head, n.path
+	elif beam-kind, beam-dir = slug-can-beam slug, a, sets.blocks-beam
+		animate-slug slug.id, beam: true
+		show-animation beam beam-kind, beam-dir, main.pos, beam-endpoint-player
+		play-sound main.pos,
+			match beam-kind
+			as ice then ice-beam
+			as soda then soda
+		-
+			slug
+			then set (turns-until-beam + dir), (beam-recovery-turns, beam-dir)
+			then start-chasing-player
+		-
+			match beam-kind
+			as ice then frozen
+			as soda then pushed-by-soda
+	elif head, path = slug-can-see-hare slug, sets
+		if is-chasing-player slug
+			might-get-player a, slug, move-slug-along-path slug, head, path, sets.physically-walkable-minus-pepper
+		else
+			play-sound head.pos, if is-big slug then big-slug-wow else slug-wow
+			animate-slug slug.id, sees-hare: true
+			-
+				slug
+				then start-chasing-player
+				then start-facing-path head, path
+			- ()
+	elif is-waiting-for-player slug
+		slug, ()
+	elif is-chasing-player slug
+		animate-slug slug.id, stops-chasing: true
+		slug.stop-chasing, ()
+	# A slug in smoke always moves forward if possible
+	elif a.smoke[slug.active-head.pos] and sets.physically-walkable[slug.active-head.pos + slug.dir]
+		might-get-player a, slug, advance-slug slug, slug.dir
+	else
+		might-get-player a, slug,
+			gravitate-slug-towards-player a, slug, sets else
+				move-slug-randomly slug.stop-chasing, sets.physically-walkable-minus-pepper
+
+-start-facing-path slug(a slug, head slug-head, path grid-path)
+	if head == a.active-head
+		set a, dir, assert-exact-dir4 path[0].pos - head.pos
+	else
+		assert is-big a
+		turn-around a
+
+-gravitate-slug-towards-player slug?(game game, slug slug, sets slug-sets) game-change-effects
+	# Turn off for slugs you have already met so you are more likely to meet new slugs
+	do if game.has-talked-to-slug[slug.id] == 0
+	distances = sets.distances-to-circle-around-player
+	pos0 = slug.active-head.pos
+	distance = distances[pos0]
+	do unless distance == 0 or distance == max-value
+	# Pass in slug.occupied-space as 'exclude' so a big slug doesn't try to walk over itself
+	do if dir1 = path-first-step pos0, distances, slug.occupied-space
+	slug1 = advance-slug slug, dir1
+	pos1 = slug1.active-head.pos
+	if distances[pos1] != 0 and dir2 = path-first-step pos1, distances, slug1.occupied-space
+		advance-slug slug1, dir2
+	else
+		slug1
+
+-start-chasing-player slug(a slug)
+	a
+	then modify flags_, it & ~waiting-for-player
+	then set chasing, chasing-player
+-start-chasing-item slug(a slug, item basic-item)
+	a
+	then modify flags_, it & ~waiting-for-player
+	then set chasing, item
+
+-might-get-player (slug, slug-affects-player?)(a game, old slug, new slug)
+	if new.occupied-space[a.player.pos]
+		if get-chaseable-harley a
+			old, ()
+		else
+			new, slugged
+	else
+		new, ()
+-move-slug-randomly slug(slug slug, walkable grid-set) game-change-effects, random
+	head = active-head slug
+	if dir = random-where head.dir.dir-and-adjacent, {walkable[head.pos + it]}
+		res = advance-slug slug, dir
+		if is-bull slug and walkable[head.pos + dir + dir]
+			advance-slug res, dir
+		else
+			res
+	else
+		turn-around slug
+
+-move-slug-along-path slug(slug slug, head slug-head, path grid-path, walkable grid-set? = ()) game-change-effects
+	do if any path else slug
+	first-step = assert-exact-dir4 path[0].pos - head.pos
+	do if not walkable or walkable[path[0].pos] else
+		face-dir slug, head, first-step
+	res = advance-slug slug, first-step
+	do if is-bull slug and head == slug.active-head and path[0].dir-to-next == first-step else res
+	do if not walkable or walkable[res.active-head.pos + first-step] else res
+	advance-slug res, first-step
+
+-face-dir slug(slug slug, head slug-head, move-in-dir dir4)
+	slug
+	then unless head == slug.active-head then turn-around
+	then set dir, move-in-dir
+
+| Slug should already be facing in the direction.
+-advance-slug slug(a slug, move-in-dir dir4) game-change-effects
+	slug = set a, dir, move-in-dir
+	next-pos = a.active-head.pos + move-in-dir
+	forbid contains slug.positions, next-pos
+	animate-slug slug.id, vacated-pos: slug.positions[end - 1].pos
+	set slug, positions, next-pos ~ slug.positions[0 .. end - 1]
+
+-slug-flees-pepper slug(slug slug, sets slug-sets) game-change-effects, random
+	walkable = sets.physically-walkable
+	if non-peppery-head = find slug.heads, {not sets.pepper-and-perfume[it.pos]}
+		if non-peppery-head.pos == slug.active-head.pos then slug else turn-around slug
+		then move-slug-randomly walkable
+	else
+		paths-per-head (slug-head, grid-path)[] = for? head in slug.heads
+			if path = find-path walkable, head.pos, sets.physically-walkable-minus-pepper, slugs-leave-smoke-max-path
+				head, path
+		if head, path = min-of paths-per-head
+			move-slug-along-path slug, head, path
+		else
+			move-slug-randomly slug, walkable
+
+-nearest-item record
+	head slug-head
+	item basic-item
+	path grid-path
+-nearest-reachable-item nearest-item?(slug slug, sets slug-sets)
+	options nearest-item[] = for? x in sets.slug-chaseable-items
+		# A slug chasing an item won't forget about it the moment the item is behind it
+		chasing = slug.chasing == x.item or sets.thrown-item and sets.thrown-item.to::basic-item == x.item
+		vis = if chasing then all-directions else strict
+		blocks-sight = if chasing then sets.blocks-sight-loose else sets.blocks-sight-strict
+		if head, path = slug-can-chase slug, item, chasing, x.pos, sets.walkable-for-chase-item, (), blocks-sight, vis
+			head, x.item, path
+	min-by options, it.path.size
+
+-slug-can-see-hare (slug-head, grid-path)?(slug slug, sets slug-sets) random
+	do if sets.should-chase-player
+	blocks-sight = if is-chasing-player slug then sets.blocks-sight-loose else sets.blocks-sight-strict
+	vis = if is-chasing-player slug then all-directions else strict
+	walk1 = sets.physically-walkable-minus-pepper
+	walk2 = sets.walkable-plus-blockers
+	slug-can-chase slug, hare, slug.is-chasing-player, sets.should-chase-player, walk1, walk2, blocks-sight, vis
+
+-slug-can-chase (slug-head, grid-path)?
+	slug slug
+	kind slug-vision-kind
+	is-chasing bool
+	dest grid-pos
+	walkable grid-set
+	alt-walkable grid-set?
+	blocks-sight virtual-grid-set
+	vis visibility-kind
+do
+	heads slug-head[] = if kind == hare then slug.active-head, else slug.heads
+	first heads, of head
+		vision = slug-vision kind, is-chasing
+		do unless blocks-sight[dest]
+		do if is-visible blocks-sight, head.pos, head.dir, dest, vision, vis
+		path = find-path walkable, head.pos, dest, slug-max-path or
+			if alt-walkable then find-path alt-walkable, head.pos, dest, slug-max-path-with-blockers
+		if path then head, path
+
+-slug-can-beam (beam-kind, dir4)?(slug slug, game game, blocks-sight virtual-grid-set)
+	do if kind = fires-beams slug
+	do if slug.turns-until-beam == 0
+	do if is-inside-maze-not-safe game
+	dirs dir4[] = if is-big slug then slug.dir, else slug.dir, slug.dir.rotate-left, slug.dir.rotate-right
+	do if dir = find dirs, of dir
+		ray = tail ray4-segment slug.active-head.pos, dir, max-beam
+		reaches ray, game.player.pos, blocks-sight
+	kind, dir
+
+-slugged game(a game, slugged-by slug) game-change-effects
+	stop-music
+	a
+	then modify player, {make-status it, aah, 1}
+	then start-dialog if contains a.inventory, napkin
+		use-napkin slugged-by
+	elif post-game a
+		lose-post-game slugged-by
+	else
+		lose-generic
+
+-step-sound-for-area sound-details(area area) random
+	sound sound-id = match area
+	as backyard or garden
+		step-outdoors
+	as basement
+		step-basement
+	as bathroom or foyer or kitchen
+		step-indoors
+	as bedroom
+		step-bedroom
+	sound-id: sound.to
+	volume: vary-volume 2/3
+	pitch: vary-pitch 1/3

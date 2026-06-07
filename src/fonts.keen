@@ -1,0 +1,22 @@
+import
+	./credit
+
+font-id enum(title, regular)
+
+font-path string(a font-id)
+	match a
+	as title
+		"fonts/philosopher/Philosopher-Bold.ttf"
+	as regular
+		"fonts/doodle.ttf"
+
+font-authors string set()
+	all-authors map members::font-id[], it.credit
+credit credit(a font-id)
+	match a
+	as title
+		url: "https://www.dafont.com/philosopher.font"
+		authors: "Erico Lebedenco", "Jovanny Lemonad"
+	as regular
+		url: "https://boogiebalrog.itch.io/doodlefonts"
+		authors: "Boogie",

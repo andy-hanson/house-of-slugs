@@ -1,0 +1,13 @@
+| Utilities which don't seem generic enough to put in the grid library
+import
+	grid/geometry
+	grid/grid-path
+	grid/grid-set
+
+| Returns non-empty if the set is a line, meaning every position has 2 neighbors except the ends.
+| Returns the directions the tunnel ends face.
+| A single-tile block is never a tunnel.
+as-tunnel-dirs (dir4, dir4)?(a grid-set)
+	do if a.size > 1
+	do if path grid-path = try-from-set a
+	sort (path[0].dir-from-next!, path[end - 1].dir-from-prev!)
