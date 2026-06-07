@@ -1,0 +1,100 @@
+import
+	game-backend/audio
+	game-backend/input
+	grid/geometry
+	keen/io/duration
+	keen/random/random
+	keen/unsafe
+	../sounds
+	../util/util
+	./area-setup
+	./game-logic
+	./game-types
+	./game-util
+	./knobs
+
+game-change record
+	new-game game
+	should-save bool
+	animations step-animation-info
+	music music-effect?
+	one-time-sounds sound-details[]
+	animated-sounds animated-sound[sound-position]
+
+apply-input game-change?(a game, trigger input-trigger, holding button set, now duration) random
+	the game-change-effects = ()
+	res mut = apply-input-inner a, trigger, holding
+	if the::game-change-effects.should-sync-play-time or the::game-change-effects.next-area
+		res := modify res, play-time, it + (now - a.last-play-time)
+		res := set res, last-play-time, now
+	elif the::game-change-effects.should-reset-play-time
+		res := set res, last-play-time, now
+	if next-area = the::game-change-effects.next-area
+		res := load-next-area res, next-area
+	rslt game-change =
+		new-game: res
+		should-save: the::game-change-effects.next-area
+		animations:
+			the::game-change-effects.anim
+			then set-if the::game-change-effects.next-area, changed-area, true
+		music: the::game-change-effects.music
+		one-time-sounds: sounds-to-play res, the::game-change-effects.one-time-sounds.move-to
+		animated-sounds: animated-sounds-to-play res, the::game-change-effects.animated-sounds.move-to
+	if any rslt, a
+		rslt
+
+-any bool(a game-change, input-game game)
+	a.should-save or
+	any a.animations or
+	a.music or
+	any a.one-time-sounds or
+	any a.animated-sounds or
+	not trusted reference-equal a.new-game, input-game
+
+-sounds-to-play sound-details[](a game, sounds (sound-position, sound-details)[])
+	puzzle = ?expand is-inside-puzzle a
+	for* pos, sound in sounds
+		sound.pan is 0
+		match pos
+		as grid-pos
+			do if not puzzle or puzzle[pos]
+			factor = volume-at-pos a, pos
+			if factor > min-volume
+				-
+					sound-id: sound.sound-id
+					volume: sound.volume * factor
+					pitch: sound.pitch
+					pan: pan-at-pos a, pos
+					delay: sound.delay
+		as nowhere
+			- sound
+
+-animated-sounds-to-play animated-sound[sound-position](a game, sounds animated-sound[sound-position])
+	map-optionally sounds, of pos, sound
+		sound.pan is 0
+		match pos
+		as grid-pos
+			factor = volume-at-pos a, pos
+			if factor > min-volume
+				pos,
+					duration: sound.duration
+					volume: sound.volume * factor
+					pitch-variation: sound.pitch-variation
+					pan: pan-at-pos a, pos
+					sounds: sound.sounds
+		as nowhere
+			pos, sound
+
+-volume-at-pos float32(a game, pos grid-pos)
+	d2 = distance-squared pos, a.player.pos
+	if d2 == 0
+		1
+	else
+		min 1, sound-base-distance / d2.to
+
+-pan-at-pos float32(a game, pos grid-pos)
+	res float32 = (pos.x - a.player.pos.x).to / pan-max-distance
+	clamp res, -1 .. 1
+
+-min-volume float32()
+	0.02

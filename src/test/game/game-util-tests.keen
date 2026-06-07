@@ -1,0 +1,13 @@
+import
+	../../game/game-types
+	../../game/game-util
+
+test
+	get-all-equipment 0 is bag1, breadcrumbs, compass, monocle, bag0, glove
+	get-all-equipment 1 is breadcrumbs, glove, compass, bag1, bag0, monocle
+	get-all-equipment 2 is compass, bag0, glove, monocle, breadcrumbs, bag1
+
+-get-all-equipment equipment[](seed nat64)
+	for* area in (bathroom, bedroom, kitchen)::area[]
+		- equipment-for-area seed, area, 0
+		- equipment-for-area seed, area, 1

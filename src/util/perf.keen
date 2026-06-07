@@ -1,0 +1,129 @@
+import
+	java/lang/System
+	keen/io/duration
+	keen/js
+
+measure-performance record(name string)
+with-block[t] t(a measure-performance, f t mut())
+	do trusted
+	index = perf-measure-index
+	start perf-mark? = if perf-enabled then perf-now
+	if perf-enabled
+		zero-all-measures
+		perf-measure-index +:= 1
+	res = f[]
+	if perf-enabled
+		log "{a.name} perf: took {perf-now - start!}", all-measures-json
+		zero-all-measures
+		index is perf-measure-index - 1 else error "Used perf-measure in parallel, that does not work"
+	res
+
+-perf-enabled global(bool) = false
+enable-perf void() global
+	do trusted
+	perf-enabled := true
+
+-all-measures-json json() global, unsafe
+	measures (nat, nat64)[symbol] =
+		make-blocks-puzzle: make-blocks-puzzle-count, make-blocks-puzzle-nsec
+		make-maze: make-maze-count, make-maze-nsec
+		custom0: custom0-count, custom0-nsec
+		custom1: custom1-count, custom1-nsec
+		custom2: custom2-count, custom2-nsec
+		custom3: custom3-count, custom3-nsec
+		custom4: custom4-count, custom4-nsec
+	for*::json-object name, (count, nsec) in measures
+		unless count == 0
+			- name,
+				count: count
+				time: nsec.to.nanoseconds.to
+
+-zero-all-measures void() global, unsafe
+	make-blocks-puzzle-count := 0
+	make-blocks-puzzle-nsec := 0
+	make-maze-count := 0
+	make-maze-nsec := 0
+	custom0-count := 0
+	custom0-nsec := 0
+	custom1-count := 0
+	custom1-nsec := 0
+	custom2-count := 0
+	custom2-nsec := 0
+	custom3-count := 0
+	custom3-nsec := 0
+	custom4-count := 0
+	custom4-nsec := 0
+
+-perf-measure-index global(nat) = 0
+-make-blocks-puzzle-count global(nat) = 0
+-make-blocks-puzzle-nsec global(nat64) = 0
+-make-maze-count global(nat) = 0
+-make-maze-nsec global(nat64) = 0
+-custom0-count global(nat) = 0
+-custom0-nsec global(nat64) = 0
+-custom1-count global(nat) = 0
+-custom1-nsec global(nat64) = 0
+-custom2-count global(nat) = 0
+-custom2-nsec global(nat64) = 0
+-custom3-count global(nat) = 0
+-custom3-nsec global(nat64) = 0
+-custom4-count global(nat) = 0
+-custom4-nsec global(nat64) = 0
+
+end-make-blocks-puzzle void(start perf-mark)
+	do trusted
+	make-blocks-puzzle-count +:= 1
+	make-blocks-puzzle-nsec +:= perf-now.nanos - start.nanos
+
+end-make-maze void(start perf-mark)
+	do trusted
+	make-maze-count +:= 1
+	make-maze-nsec +:= perf-now.nanos - start.nanos
+
+end-custom0 void(start perf-mark)
+	do trusted
+	custom0-count +:= 1
+	custom0-nsec +:= perf-now.nanos - start.nanos
+
+end-custom1 void(start perf-mark)
+	do trusted
+	custom1-count +:= 1
+	custom1-nsec +:= perf-now.nanos - start.nanos
+
+end-custom2 void(start perf-mark)
+	do trusted
+	custom2-count +:= 1
+	custom2-nsec +:= perf-now.nanos - start.nanos
+
+end-custom3 void(start perf-mark)
+	do trusted
+	custom3-count +:= 1
+	custom3-nsec +:= perf-now.nanos - start.nanos
+
+end-custom4 void(start perf-mark)
+	do trusted
+	custom4-count +:= 1
+	custom4-nsec +:= perf-now.nanos - start.nanos
+
+perf-mark record
+	-nanos nat64
+~ - duration(a perf-mark, b perf-mark)
+	nanoseconds to a.nanos - b.nanos
+perf-now perf-mark()
+	trusted if java
+		- nanoTime.to
+	elif js
+		msec float = call-property js-global["performance"], "now" 'to
+		- msec * 1_000_000 'to
+	else
+		throw todo
+
+test
+	# Just making sure this is not marked as unused
+	do if false
+	now = perf-now
+	end-custom0 now
+	end-custom1 now
+	end-custom2 now
+	end-custom3 now
+	end-custom4 now

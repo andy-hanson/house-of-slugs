@@ -1,0 +1,132 @@
+import
+	grid/geometry
+	grid/grid-entities
+	grid/grid-set
+	grid/sparse-grid
+	grid/util/more-geometry
+	keen/col/enum-set
+	keen/parse
+	keen/string/util
+	./game-types
+	./game-util
+
+apply-input-command game(a game, input string) game-change-effects
+	try
+		apply-input-command-inner a, input
+	catch e as deserialize-error
+		log-error "Error parsing command: Expected {e.expected}, actual {e.value}"
+		a
+	catch as parse-error
+		log-error "Error parsing command"
+		a
+
+-apply-input-command-inner game(a game, input string) game-change-effects
+	stripped = strip input
+	do if any stripped else
+		log-error "Needs a command"
+		a
+	command string, args string = if x, y = try-split-once stripped, " "
+		x.to, y.to
+	else
+		stripped, ""
+	match command
+	as add-item
+		item item = args.to
+		modify a, inventory, it ~ item
+	as get
+		log debug-get a, args.to
+		a
+	as move-player
+		displacement grid-displacement = to parse kid, args
+		modify a, player * pos, {it + displacement}
+	as set
+		do if name, value = try-split-once args, " " else
+			log-error "Syntax: set <name> <value>"
+			a
+		try
+			json = parse kid, value
+			debug-set a, name.to, json
+		catch e as parse-error
+			log-error e
+			a
+	else
+		log-error "Supported commands: add-item, get, load-area, move-player, set"
+		a
+
+-debug-get json(a game, name symbol)
+	if lens = debuggable name
+		get lens, a
+	else
+		match name
+		as difficulty
+			a.difficulty.to
+		as ground-items
+			to map-optionally::ground-item[] a.exclusive-entities, it.ground-item
+		as lowest-difficulty
+			a.lowest-difficulty.to
+		as harley
+			if x = find a.exclusive-entities, it.harley then x.to
+		as key-items
+			for* x in a.exclusive-entities
+				if ground-equipment x
+					- x.to
+				elif ground-flashlight-part x
+					- x.to
+		as player
+			a.player.to
+		as puzzle-bounds
+			a.puzzle-bounds.to
+		as safe-tiles
+			to a.tile-map.safe
+		as seed
+			a.seed
+		as slugs
+			for* slug in a.exclusive-entities
+				if slug slug
+					- slug.to
+		as slugs-by-distance
+			slugs slug[] = map-optionally a.exclusive-entities, it.slug
+			pairs (slug-id, float)[] = for slug in slugs
+				- slug.id
+				- distance! slug.occupied-space, a.player.pos
+			to sort pairs, it.b
+		as smoke
+			a.smoke.to
+		as warps
+			to map-optionally::warp[] a.exclusive-entities, it.warp
+		else
+			if id = name.to::slug-id?
+				to find a.exclusive-entities, {it.slug and it.id == id}
+			else
+				"unknown name {name}"
+-debug-set game(a game, name symbol, value json)
+	try
+		if lens = debuggable name
+			set lens, a, value
+		else
+			log-error "unknown name {name}"
+			a
+	catch e as deserialize-error
+		log-error e
+		a
+
+-debuggable (game, json) lens?(name symbol)
+	match name
+	as equipment
+		to-from-json equipment
+	as flashlight-parts
+		to-from-json flashlight-parts
+	as inventory
+		to-from-json inventory
+	as "player.pos"
+		to-from-json player * pos
+	as shower
+		to-from-json shower
+	else
+		()
+
+-to-from-json[t, u] (t, json) lens(lens (t, u) lens) t data, u data, u from-json, u to-json
+	get: of a
+		to get lens, a
+	set: of a, x
+		set lens, a, x.to

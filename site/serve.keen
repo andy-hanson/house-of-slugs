@@ -1,0 +1,43 @@
+#!/usr/bin/env keen
+import
+	keen/io/file
+	com/sun/net/httpserver/SimpleFileServer
+	com/sun/net/httpserver/SimpleFileServer$OutputLevel
+	com/sun/net/httpserver/HttpServer
+	java/lang/Thread
+	java/net/InetSocketAddress
+	java/nio/file/Path
+	java/nio/file/Paths
+
+main void() global, java
+	do trusted
+	port int32 = 8080
+	addr InetSocketAddress = port,
+	path Path = get "/{current-directory}/site", ()
+	server HttpServer = createFileServer addr, path, INFO
+	start server
+	finally stop server, 0
+	log "Serving at localhost:{port}/"
+	copy-things
+	join currentThread # waits forever
+
+| The Java file server doesn't support symlinks, so just copy any files that differ
+-copy-things void() global
+	for dir in ("fonts", "fonts/philosopher", "images", "music", "sounds", "tiles")::string[]
+		in-dir = dir
+		out-dir = "site/{dir}"
+		ensure-directory out-dir
+		for file-name in names-in-dir dir
+			in-file = "{in-dir}/{file-name}"
+			out-file = "{out-dir}/{file-name}"
+			if is-directory in-file
+				dir is "fonts"
+				file-name is "philosopher"
+			else
+				current nat8[] = read-file in-file
+				current-out nat8[]? = try
+					read-file out-file
+				catch as path-not-found
+					()
+				if current-out != current
+					write-file out-file, current

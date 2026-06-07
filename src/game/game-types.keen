@@ -1,0 +1,1101 @@
+import
+	game-backend/audio
+	grid/bounded-grid
+	grid/geometry
+	grid/grid-entities
+	grid/grid-set
+	grid/grid-set-set
+	grid/sparse-grid
+	keen/col/enum-set
+	keen/col/index-set
+	keen/col/enum-map
+	keen/io/duration
+	keen/parse
+	../music
+	../sounds
+	../util/util
+
+difficulty enum(easy, normal, hard)
+show string(a difficulty)
+	match a
+	as easy
+		"Easy"
+	as normal
+		"Normal"
+	as hard
+		"Hard"
+prev difficulty?(a difficulty)
+	match a
+	as easy then ()
+	as normal then easy
+	as hard then normal
+next difficulty?(a difficulty)
+	match a
+	as easy then normal
+	as normal then hard
+	as hard then ()
+
+game record
+	persistent-state persistent-state
+	last-play-time duration
+	area-state area-state
+	ui-state ui-state
+
+| All areas are configured laid out from south to north. They may be rotated later.
+area-config record
+	layout area-layout-config
+	map area-map-config
+	npcs slug-id[dir4]
+	tutorial-slugs slug-id[dir4]
+	sprinkle area-sprinkle-config
+	player-gravity-radius float32
+	visibility area-visibility
+area-layout-config record
+	origin-warp area?
+	length float32
+	sites area-site-config[]
+area-site-config record
+	placement site-placement
+	| Coordinates here are relative to the entrance of the puzzle
+	kind area-site-kind
+area-site-kind union(area, puzzle-layout, babeki)
+| Number 0 .. 3 that will be bathroom, bedroom, or kitchen, depending on the seed
+babeki record(n nat8)
+puzzle-features flags
+	fire
+	flood
+	pillows
+	tunnels
+	lit-blocks
+puzzle-layout record
+	puzzle-tiles grid-set
+	entrance grid-pos
+	connectors grid-set
+	rewards puzzle-reward sparse-grid
+	valves grid-set
+	exit grid-pos?
+	features puzzle-features
+do
+	forbid any-overlaps (puzzle-tiles, (entrance,), connectors, rewards.set, valves, (if exit then exit,))
+	assert some puzzle-tiles, {is-next-to it, connectors}
+	assert not any rewards or some rewards.set, {is-next-to it, connectors}
+	count puzzle-tiles, {is-next-to it, entrance} is 1
+	assert every valves, {is-next-to it, puzzle-tiles}
+	assert not exit or is-next-to exit, rewards.set
+	assert features[lit-blocks] or only-where connectors.bounds.center.neighbors4, puzzle-tiles[it]
+rotate puzzle-layout(a puzzle-layout, rotation relative-dir4)
+	puzzle-tiles: rotate a.puzzle-tiles, rotation
+	entrance: rotate a.entrance, rotation
+	connectors: rotate a.connectors, rotation
+	rewards: rotate a.rewards, rotation
+	valves: rotate a.valves, rotation
+	exit: ?rotate a.exit, rotation
+	features: a.features
+flip-horizontally puzzle-layout(a puzzle-layout)
+	puzzle-tiles: flip-horizontally a.puzzle-tiles
+	entrance: flip-horizontally a.entrance
+	connectors: flip-horizontally a.connectors
+	rewards: flip-horizontally a.rewards
+	valves: flip-horizontally a.valves
+	exit: ?flip-horizontally a.exit
+	features: a.features
+puzzle-goal union(grid-pos, light-every-block)
+light-every-block record
+goal puzzle-goal(a puzzle-layout)
+	if a.features[lit-blocks]
+		light-every-block
+	else
+		:: grid-pos
+		connector = a.connectors.bounds.center
+		only-where! connector.neighbors4, a.puzzle-tiles[it]
+~ + puzzle-layout(a puzzle-layout, diff grid-displacement)
+	puzzle-tiles: a.puzzle-tiles + diff
+	entrance: a.entrance + diff
+	connectors: a.connectors + diff
+	rewards: a.rewards + diff
+	valves: a.valves + diff
+	exit: if e = a.exit then e + diff
+	features: a.features
+puzzle-layout-init record
+	layout string
+	rewards puzzle-reward[]
+	features puzzle-features
+	exit grid-pos?
+new puzzle-layout-init(layout string, rewards puzzle-reward[], features puzzle-features)
+	layout, rewards, features, ()
+puzzle puzzle-layout(init puzzle-layout-init)
+	grammar = bounded-grid of::puzzle-layout-kind char
+		match char
+		as " "
+			empty
+		as "•"
+			puzzle-tile
+		as "C"
+			connector
+		as "R"
+			reward
+		as "V"
+			valve
+		else
+			throw unreachable
+	grid = parse grammar, init.layout
+	rewards = positions-where grid, it.b == reward
+	rewards.size is init.rewards.size
+	puzzle-tiles: positions-where grid, it.b == puzzle-tile
+	entrance: 0, 0
+	connectors: positions-where grid, it.b == connector
+	rewards: for pos, reward in zip rewards, init.rewards then pos, reward
+	valves: positions-where grid, it.b == valve
+	exit: init.exit
+	features: init.features
+-puzzle-layout-kind enum(empty, puzzle-tile, connector, reward, valve, exit)
+full-bounds grid-rect(a puzzle-layout)
+	# We want walls all around the puzzle. But not around the entrance.
+	base = a.puzzle-bounds | a.connectors.bounds | a.rewards.bounds
+	(expand base, 1) | a.entrance | a.valves.bounds
+puzzle-bounds grid-rect(a puzzle-layout)
+	a.puzzle-tiles.bounds
+ground grid-set(a puzzle-layout)
+	a.puzzle-tiles | a.connectors | a.safe
+safe grid-set(a puzzle-layout)
+	a.rewards.set | a.entrance | if e = a.exit then e,
+
+| A {puzzle-layout} is required to give this context
+blocks-puzzle record
+	blocks grid-set-set
+	pillows grid-set
+	fire grid-set
+	flood grid-set
+~ to json(a blocks-puzzle)
+	with::json-object out in build
+		out ~= "blocks", a.blocks.to
+		if any a.pillows then out ~= "pillows", a.pillows.to
+		if any a.fire then out ~= "fire", a.fire.to
+		if any a.flood then out ~= "flood", a.flood.to
+~ to blocks-puzzle(a json)
+	blocks: a["blocks"].to
+	pillows: a["pillows"].to
+	fire: a["fire"].to
+	flood: a["flood"].to
+~ + blocks-puzzle(a blocks-puzzle, d grid-displacement)
+	blocks: map a.blocks, it + d
+	pillows: a.pillows + d
+	fire: a.fire + d
+	flood: a.flood + d
+~ rotate blocks-puzzle(a blocks-puzzle, r relative-dir4)
+	blocks: rotate a.blocks, r
+	pillows: rotate a.pillows, r
+	fire: rotate a.fire, r
+	flood: rotate a.flood, r
+~ flip-horizontally blocks-puzzle(a blocks-puzzle)
+	blocks: flip-horizontally a.blocks
+	pillows: flip-horizontally a.pillows
+	fire: flip-horizontally a.fire
+	flood: flip-horizontally a.flood
+
+site-placement enum
+	beginning
+	midway-left
+	midway-right
+	midway-middle
+	farthest
+rotation relative-dir4(a site-placement)
+	match a
+	as beginning then forward
+	as midway-left then left
+	as midway-right then right
+	as midway-middle then forward
+	as farthest then forward
+show string(a site-placement) = a.to::symbol.to
+puzzle-reward union
+	basic-item
+	reward-equipment
+	reward-flashlight-part
+	reward-harley
+	reward-random-item
+	reward-slug
+	reward-warp
+reward-equipment record(is-second bool)
+reward-flashlight-part record
+reward-harley record
+reward-slug record(id slug-id)
+reward-random-item record(choices basic-item[])
+reward-warp record(area area)
+area-map-config record
+	tsj string
+	tmj string
+	maze-config area-maze-config
+area-maze-config record
+	n-safe-tiles nat8
+	non-ground-is-wall bool
+| The config specifies the hard mode values.
+| Easy and normal mode will have more items and less slugs.
+area-sprinkle-config record
+	items basic-item[]
+	slugs slug-config[]
+	fire-and-flood nat32
+	pillows (difficulty, nat32) enum-map
+new area-sprinkle-config(items basic-item[], slugs slug-config[])
+	items: items
+	slugs: slugs
+	fire-and-flood: 0
+	pillows: (easy, 0), (normal, 0), (hard, 0)
+| Slug whose position will be chosen randomly
+slug-config record
+	id slug-id
+	size nat8
+	flags_ slug-flags
+plain-slug slug-config(id slug-id) = id, 1, ()
+big-slug slug-config(id slug-id, size nat8) = id, size, ()
+big-ice-bomb-slug slug-config(id slug-id, size nat8, kind bomb-kind) = id, size, ice | lit-up | as-drops-bombs kind
+bomb-slug slug-config(id slug-id, kind bomb-kind) = id, 1, as-drops-bombs kind
+cookie-slug slug-config(id slug-id) = id, 1, looks-like-cookie | sleeping
+bull-slug slug-config(id slug-id) = id, 1, bull
+ice-slug slug-config(id slug-id) = id, 1, ice
+ice-lit-up-slug slug-config(id slug-id) = id, 1, ice | lit-up
+sleeping-slug slug-config(id slug-id) = id, 1, sleeping | holding-doll
+soda-slug slug-config(id slug-id) = id, 1, spits-soda
+
+fire-and-flood enum(none, mixed, fire-only)
+area-visibility enum(perfect, basement, bedroom)
+
+ui-state union
+	ui-state-dialog
+	ui-state-initial
+	ui-state-normal
+	ui-state-item-select
+	ui-state-throw-select
+	ui-state-paused
+	ui-state-the-end
+ui-state-dialog record(remaining dialog-entry[])
+ui-state-initial record
+ui-state-normal record
+ui-state-item-select record(selected-item-index nat8)
+ui-state-throw-select record(selected-item-index nat8, selected-throw-position grid-pos)
+ui-state-paused record(next-difficulty difficulty, slugs slugs-list-info, kind paused-kind)
+paused-kind enum
+	main
+	slugs-list
+	credits
+	explain-controls
+cycle paused-kind(a paused-kind)
+	match a
+	as main then slugs-list
+	as slugs-list then credits
+	as credits then explain-controls
+	as explain-controls then main
+slugs-list-info record
+	slugs-per-area (area, slug-id[])[]
+	seen-slugs slug-id enum-set
+ui-state-the-end record
+	kind the-end-kind
+	slugs slugs-list-info
+the-end-kind enum(credits, stats, slugs-list, none)
+cycle the-end-kind(a the-end-kind)
+	match a
+	as credits then stats
+	as stats then slugs-list
+	as slugs-list then none
+	as none then credits
+
+dialog-entry record
+	| The effect happens after continuing the dialog, before the next {dialog-entry}
+	who dialog-who
+	side east-west
+	content string
+	one-time-sound sound-id?
+	post-effect dialog-effect?
+	delay duration
+new dialog-entry(who dialog-who, content string)
+	who, who.dialog-side, content, (), (), ()
+new dialog-entry(who dialog-who, content string, one-time-sound sound-id)
+	who, who.dialog-side, content, one-time-sound, (), ()
+new dialog-entry(who dialog-who, content string, post-effect dialog-effect)
+	who, who.dialog-side, content, (), post-effect, ()
+-dialog-side east-west(who dialog-who)
+	match who
+	as player
+		west
+	as player-aah
+		west
+	as player-crying
+		west
+	else
+		east
+dialog-who enum
+	big-slug
+	big-slug-dizzy
+	big-slug-frozen
+	big-slug-waking-up
+	big-slug-wow
+	big-ice-slug
+	big-ice-slug-dizzy
+	big-ice-slug-waking-up
+	big-ice-slug-wow
+	bull-slug
+	bull-slug-dizzy
+	bull-slug-frozen
+	bull-slug-waking-up
+	bull-slug-wow
+	cookie-slug
+	cookie-slug-dizzy
+	cookie-slug-frozen
+	cookie-slug-waking-up
+	cookie-slug-wow
+	harley
+	harley-aah
+	ice-slug
+	ice-slug-dizzy
+	ice-slug-waking-up
+	ice-slug-wow
+	player
+	player-aah
+	player-crying
+	player-sleepy
+	slug
+	slug-dizzy
+	slug-frozen
+	slug-waking-up
+	slug-wow
+	soda-slug
+	soda-slug-dizzy
+	soda-slug-frozen
+	soda-slug-waking-up
+	soda-slug-wow
+is-player bool(a dialog-who)
+	a == player or a == player-aah or a == player-crying or a == player-sleepy
+dialog-effect union(lose, music-id, pause-music, the-end, unpause-music, use-napkin)
+lose record
+use-napkin record(slugged-by slug)
+the-end record
+
+selected-item-index nat8(a game)
+	match ui = a.ui-state
+	as ui-state-item-select
+		ui.selected-item-index
+	as ui-state-throw-select
+		ui.selected-item-index
+	else
+		throw unreachable
+selected-item item(a game)
+	a.inventory[selected-item-index a]
+
+| State that gets saved.
+persistent-state record
+	seed nat64
+	| Current difficulty
+	difficulty difficulty
+	lowest-difficulty difficulty
+	prev-area area?
+	cur-area area
+	visited-areas area enum-set
+	has-picked-up-items basic-item enum-set
+	| Also tracks the number of times you talked to each slug.
+	| For 100% completion, be sure to talk to every slug 255 times!
+	has-talked-to-slug (slug-id, nat8) enum-map
+	times-talked-to-harley nat8
+	progress-flags progress-flags
+	breadcrumbs (area, grid-set) enum-map
+	solved-puzzles (area, index-set) enum-map
+	equipment equipment enum-set
+	flashlight-parts flashlight-part enum-set
+	inventory item[]
+	play-time duration
+	total-turns nat16
+	times-slugged nat8
+new-game persistent-state(seed nat64)
+	new-game seed, easy
+new-game persistent-state(seed nat64, difficulty difficulty)
+	seed: seed
+	difficulty: difficulty
+	lowest-difficulty: difficulty
+	prev-area: ()
+	cur-area: garden
+	visited-areas: garden,
+	has-picked-up-items: ()
+	has-talked-to-slug: ()
+	times-talked-to-harley: ()
+	progress-flags: ()
+	breadcrumbs: ()
+	solved-puzzles: ()
+	equipment: ()
+	flashlight-parts: ()
+	inventory: ()
+	play-time: ()
+	total-turns: ()
+	times-slugged: ()
+flashlight-part enum
+	flashlight-shell
+	flashlight-bulb
+	flashlight-battery
+equipment enum
+	bag0
+	bag1
+	breadcrumbs
+	compass
+	glove
+	monocle
+show string(a equipment)
+	match a
+	as bag0
+		"pocket"
+	as bag1
+		"purse"
+	as breadcrumbs
+		"bag of breadcrumbs"
+	as compass
+		"compass"
+	as glove
+		"glove"
+	as monocle
+		"monocle"
+seed nat64(a game) = a.persistent-state.seed
+difficulty difficulty(a game) = a.persistent-state.difficulty
+lowest-difficulty difficulty(a game) = a.persistent-state.lowest-difficulty
+set-difficulty game(a game, value difficulty)
+	is-beginning = a.visited-areas == (garden,)
+	set a, persistent-state * (difficulty + lowest-difficulty),
+		- value
+		- if is-beginning then value else min a.lowest-difficulty, value
+	# You can't go get a bunch of easy mode items then switch to hard mode
+	then set-if (is-beginning and value > a.difficulty), inventory, ()
+inventory item[](a game) = get a, inventory
+inventory (game, item[]) lens() = persistent-state * inventory
+area area(a game) = a.persistent-state.cur-area
+flashlight-parts flashlight-part enum-set(a game) = get a, flashlight-parts
+flashlight-parts (game, flashlight-part enum-set) lens() = persistent-state * flashlight-parts
+equipment equipment enum-set(a game) = get a, equipment
+equipment (game, equipment enum-set) lens() = persistent-state * equipment
+visited-areas area enum-set(a game) = get a, visited-areas
+visited-areas (game, area enum-set) lens() = persistent-state * visited-areas
+has-picked-up-items basic-item enum-set(a game) = get a, has-picked-up-items
+has-picked-up-items (game, basic-item enum-set) lens() = persistent-state * has-picked-up-items
+has-talked-to-slug (slug-id, nat8) enum-map(a game) = get a, has-talked-to-slug
+has-talked-to-slug (game, (slug-id, nat8) enum-map) lens() = persistent-state * has-talked-to-slug
+times-talked-to-harley nat8(a game) = get a, times-talked-to-harley
+times-talked-to-harley (game, nat8) lens() = persistent-state * times-talked-to-harley
+progress-flags progress-flags(a game) = get a, progress-flags
+progress-flags (game, progress-flags) lens() = persistent-state * progress-flags
+player-can-touch-slugs bool(a game)
+	a.progress-flags[player-can-touch-slugs]
+breadcrumbs grid-set(a game) = get a, breadcrumbs
+breadcrumbs (game, grid-set) lens()
+	get: of game then game.persistent-state.breadcrumbs[game.area]
+	set: of game, value
+		modify game, persistent-state * breadcrumbs, it ~ (game.area, value)
+add-solved-puzzle game(a game, index nat)
+	modify a, solved-puzzles-cur-area, it ~ index
+solved-puzzles-cur-area (game, index-set) lens()
+	computed-lens of game
+		persistent-state * solved-puzzles * lens-for-key game.area
+play-time duration(a game) = get a, play-time
+play-time (game, duration) lens() = persistent-state * play-time
+times-slugged nat8(a game) = get a, times-slugged
+times-slugged (game, nat8) lens() = persistent-state * times-slugged
+total-turns nat16(a game) = get a, total-turns
+total-turns (game, nat16) lens() = persistent-state * total-turns
+
+area enum
+	backyard
+	basement
+	bathroom
+	bedroom
+	garden
+	foyer
+	kitchen
+show string(a area)
+	a.to::symbol.to
+
+areas-with-unique-slugs area[]()
+	garden, foyer, bedroom, bathroom, kitchen, basement
+
+exclusive-entities alias
+	exclusive-entity grid-entities
+
+| State that is reset when you lose
+area-state record
+	tile-map tile-map
+	player player
+	player-gravity-radius float32
+	exclusive-entities exclusive-entities
+	| Values are the number of turns the smoke has left
+	smoke smoke sparse-grid
+	slimy grid-set
+	puzzle-win-switches grid-set
+	| For solved puzzles, this will change to an empty rect (to preserve indices).
+	| We want the indices preserved so that {solved-puzzles} will stay solved.
+	puzzle-bounds grid-rect[]
+	shower bool
+	visibility area-visibility
+tile-map tile-map(a game) = a.area-state.tile-map
+tile-map (game, tile-map) lens() = area-state * tile-map
+exclusive-entities exclusive-entities(a game) = a.area-state.exclusive-entities
+exclusive-entities (game, exclusive-entities) lens() = area-state * exclusive-entities
+player player(a game) = get a, player
+player (game, player) lens() = area-state * player
+player-gravity-radius float32(a game) = a.area-state.player-gravity-radius
+smoke smoke sparse-grid(a game) = get a, smoke
+smoke (game, smoke sparse-grid) lens() = area-state * smoke
+slimy grid-set(a game) = get a, slimy
+slimy (game, grid-set) lens() = area-state * slimy
+puzzle-win-switches grid-set(a game) = get a, puzzle-win-switches
+puzzle-win-switches (game, grid-set) lens() = area-state * puzzle-win-switches
+puzzle-bounds grid-rect[](a game) = get a, puzzle-bounds
+puzzle-bounds (game, grid-rect[]) lens() = area-state * puzzle-bounds
+shower bool(a game) = get a, shower
+shower (game, bool) lens() = area-state * shower
+visibility area-visibility(a game) = a.area-state.visibility
+
+| Any entity that excludes other entities from its space.
+| The player is usually exclusive, but can travel through certain blocks, so it's handled separately.
+exclusive-entity union
+	block
+	breakable-wall
+	harley
+	sparkler
+	ground-flashlight-part
+	ground-equipment
+	ground-item
+	lit-bomb
+	pillow
+	slug
+	valve
+	warp
+breakable-wall record(pos grid-pos)
+sparkler record(pos grid-pos, turns-remaining nat8)
+occupied-space grid-set(a exclusive-entity)
+	match a
+	as block
+		a.occupied-space
+	as breakable-wall
+		a.pos,
+	as harley
+		a.pos,
+	as sparkler
+		a.pos,
+	as ground-flashlight-part
+		a.pos,
+	as ground-equipment
+		a.pos,
+	as ground-item
+		a.pos,
+	as lit-bomb
+		a.pos,
+	as pillow
+		a.pos,
+	as slug
+		a.occupied-space
+	as valve
+		a.pos,
+	as warp
+		a.pos,
+occupied-space (exclusive-entity, grid-set) lens()
+	get: it.occupied-space
+	set: of entity, space
+		set::block entity.block!, occupied-space, space
+
+ground-flashlight-part record(pos grid-pos, part flashlight-part)
+ground-equipment record(pos grid-pos, equipment equipment)
+ground-item record(pos grid-pos, item basic-item)
+lit-bomb record
+	pos grid-pos
+	turns-until-boom nat8
+	max-turns nat8
+	kind bomb-kind
+bomb-kind enum(plain, pepper, sleep)
+to basic-item(a bomb-kind)
+	match a
+	as plain then smoke-bomb
+	as pepper then pepper-bomb
+	as sleep then sleep-bomb
+to smoke-kind(a bomb-kind)
+	match a
+	as plain then plain
+	as pepper then pepper
+	as sleep then sleep
+pillow record(pos grid-pos)
+valve record(pos grid-pos)
+warp record
+	pos grid-pos
+	| If present, the player must press in the direction to use the warp. Otherwise it acts instantly.
+	dir dir4?
+	next-area area
+
+smoke record
+	time-to-live nat8
+	kind smoke-kind
+smoke-kind enum
+	plain
+	sleep
+	pepper
+	perfume
+slugs-avoid-smoke bool(a smoke-kind)
+	a == pepper or a == perfume
+
+block record
+	color nat8
+	occupied-space grid-set
+	lit block-lit
+	| If the block is a tunnel, this stores the ends or it.
+	| This stores the directions pointing *outwards* from the tunnel.
+	| Note: This representation prevents blocks where the tunnel has both ends in the same direction.
+	| This is fine as those aren't interesting for puzzles anyway.
+	| (If the openings are next to each other there's no point, and making them far away requires a huge block.)
+	| Tunnel blocks will always have a tunnel shape (e.g., no squares), so just storing the directions is unambiguous.
+	tunnel (dir4, dir4)?
+new block(color nat8, occupied-space grid-set)
+	color, occupied-space, never-lit, ()
+block-lit enum(never-lit, unlit, lit)
+toggle block-lit(a block-lit)
+	match a
+	as never-lit then never-lit
+	as unlit then lit
+	as lit then unlit
+is-end-of-tunnel dir4?(block block, pos grid-pos)
+	do if block.tunnel
+	assert block.occupied-space[pos]
+	do if next-pos = only neighbors-in block.occupied-space, pos
+	res = assert-exact-dir4 pos - next-pos
+	assert res == block.tunnel.a or res == block.tunnel.b
+	res
+is-end-of-tunnel dir4?(block grid-set, pos grid-pos)
+	assert block[pos]
+	if next-pos = only neighbors-in block, pos
+		assert-exact-dir4 pos - next-pos
+
+progress-flags flags
+	has-been-sleep-bombed
+	has-been-peppered
+	has-recovered-from-pepper
+	has-stepped-on-slimy
+	alice-has-seen-player
+	bob-has-seen-player
+	player-can-touch-slugs
+
+harley record
+	state harley-state
+	pos grid-pos
+	dir dir4
+harley-state enum
+	waiting
+	moving
+	stuck
+	slug-on-face
+
+slug record
+	id slug-id
+	flags_ slug-flags
+	| For a big slug, the main head goes first.
+	positions grid-pos[]
+	| Unused for big slugs (whose direction is determined by the next position)
+	dir dir4
+	| {max-value} to never recover
+	turns-until-recovery nat8
+	turns-until-beam nat8
+	turns-until-bomb nat8
+slug slug(id slug-id, flags_ slug-flags, position grid-pos, dir dir4)
+	id, flags_, (position,), dir, 0, 0, 0
+slug-flags flags
+	dizzy
+	drops-smoke-bombs
+	drops-sleep-bombs
+	drops-pepper-bombs
+	bull
+	frozen
+	lit-up
+	| Always paired with {sleeping}
+	holding-doll
+	ice
+	is-chasing-hare
+	is-chasing-item
+	looks-like-cookie
+	| Slug will never move. Dialog is determined by the direction it's facing.
+	npc
+	| Slug won't move until it sees the player
+	waiting-for-player
+	sleeping
+	spits-soda
+	just-woke-up
+drops-bombs bomb-kind?(a slug)
+	drops-bombs a.flags_
+drops-bombs bomb-kind?(a slug-flags)
+	if a[drops-smoke-bombs]
+		plain
+	elif a[drops-sleep-bombs]
+		sleep
+	elif a[drops-pepper-bombs]
+		pepper
+as-drops-bombs slug-flags(kind bomb-kind)
+	match kind
+	as plain then drops-smoke-bombs
+	as sleep then drops-sleep-bombs
+	as pepper then drops-pepper-bombs
+is-big bool(a slug) = a.positions.size > 1
+is-bull bool(a slug) = a.flags_[bull]
+is-ice bool(a slug) = a.flags_[ice]
+is-lit-up bool(a slug) = a.flags_[lit-up]
+is-npc bool(a slug) = a.flags_[npc]
+is-soda bool(a slug) = a.flags_[spits-soda]
+beam-kind enum(ice, soda)
+fires-beams beam-kind?(a slug)
+	if is-ice a
+		ice
+	elif is-soda a
+		soda
+is-dizzy bool(a slug) = a.flags_[dizzy]
+is-frozen bool(a slug) = a.flags_[frozen]
+is-sleeping bool(a slug) = a.flags_[sleeping]
+is-holding-doll bool(a slug) = a.flags_[holding-doll]
+is-unable-to-move bool(a slug)
+	is-unable-to-move a.flags_
+is-unable-to-move bool(a slug-flags)
+	a[dizzy] or a[frozen] or a[sleeping] or a[just-woke-up]
+make-able-to-move slug(a slug)
+	a
+	then modify flags_, it & ~(dizzy | sleeping | frozen | just-woke-up)
+is-chasing-hare bool(a slug) = a.flags_[is-chasing-hare]
+is-chasing-item bool(a slug) = a.flags_[is-chasing-item]
+is-chasing-something bool(a slug)
+	is-chasing-hare a or is-chasing-item a
+looks-like-cookie bool(a slug) = a.flags_[looks-like-cookie]
+is-waiting-for-player bool(a slug) = a.flags_[waiting-for-player]
+occupied-space grid-set(a slug)
+	a.positions.to
+curve-at-pos (dir4?, dir4?)(positions grid-pos[], index nat)
+	- unless index == 0
+		assert-exact-dir4 positions[index] - positions[index - 1]
+	- unless index == positions.size - 1
+		assert-exact-dir4 positions[index + 1] - positions[index]
+slug-head record
+	pos grid-pos
+	dir dir4
+| The head that is currently in control
+main-head slug-head(a slug) = a.heads[0]
+| Returns a single head for 1-tile slugs.
+| For long slugs there is a head on both ends. This returns the head in control first, followed by the tail-head.
+heads slug-head[](a slug)
+	assert any a.positions
+	if pos = only a.positions
+		- pos, a.dir
+	else
+		- a.positions[0], assert-exact-dir4 a.positions[0] - a.positions[1]
+		- a.positions[end - 1], assert-exact-dir4 a.positions[end - 1] - a.positions[end - 2]
+turn-around slug(a slug)
+	if a.positions.size == 1
+		modify a, dir, -it
+	else
+		new-positions grid-pos[] = a.positions.reverse.to
+		new-dir = assert-exact-dir4 new-positions[0] - new-positions[1]
+		set a, dir + positions, (new-dir, new-positions)
+
+inventory-grid-size nat-size(max nat8)
+	match max
+	as 6
+		3, 2
+	as 9
+		3, 3
+	as 12
+		4, 3
+	else
+		throw unreachable
+item-grid-pos grid-pos(item-index nat8, max nat8)
+	assert item-index < max
+	# Items begin filling from the top, which has high Y values
+	size = inventory-grid-size max
+	w nat8 = to size.width
+	x: to item-index % w
+	y: to size.height - 1 - item-index / w
+item-index nat8?(item-pos grid-pos, max nat8)
+	size = inventory-grid-size max
+	do if contains size, item-pos
+	y = size.height - 1 - item-pos.y.to::nat16
+	to item-pos.x.to::nat16 + y * size.width
+
+item union(basic-item, slug-id)
+to json(a item)
+	# There is a slug named 'cookie', but they aren't in the backyard so you can't use them as an item
+	match a
+	as basic-item
+		a.to::symbol.to
+	as slug-id
+		a.to::symbol.to
+to item(a json)
+	sym = to::symbol a
+	to::basic-item? sym or to::slug-id? sym else throw deserialize-error "item", a
+basic-item enum
+	cookie
+	hare-plush
+	ice-soda
+	lemon
+	napkin
+	pepper-bomb
+	perfume
+	soap
+	soda
+	sleep-bomb
+	smoke-bomb
+	sparkler
+
+chaseable-item enum(cookie, lemon, hare-plush)
+slugs-go-for-item chaseable-item?(a item)
+	do if basic-item a
+	match a
+	as cookie then cookie
+	as lemon then lemon
+	as hare-plush then hare-plush
+	else then ()
+is-edible bool(a item)
+	do if basic-item a
+	match a
+	as cookie then true
+	as lemon then true
+	else then ()
+as-bomb bomb-kind?(a item)
+	do if basic-item a
+	match a
+	as sleep-bomb then sleep
+	as smoke-bomb then plain
+	as pepper-bomb then pepper
+	else then ()
+as-item basic-item(kind bomb-kind)
+	match kind
+	as plain then smoke-bomb
+	as sleep then sleep-bomb
+	as pepper then pepper-bomb
+
+player record
+	pos grid-pos
+	dir dir4
+	is-holding-pillow bool
+	statuses nat8[player-status]
+player-status enum(crying, frozen, perfume, sleeping, slipped)
+has-status bool(a player, status player-status) = a.statuses[status]
+is-crying bool(a player) = has-status a, crying
+is-frozen bool(a player) = has-status a, frozen
+is-perfumed bool(a player) = has-status a, perfume
+is-sleeping bool(a player) = has-status a, sleeping
+is-slipped bool(a player) = has-status a, slipped
+is-unable-to-move bool(a player) = is-frozen a or is-sleeping a or is-slipped a
+
+tile-id alias
+	nat8
+
+tile-map record
+	tiles tile-id bounded-grid
+	maze-ground grid-set
+	ground grid-set
+	safe grid-set
+	ground-minus-safe grid-set
+	walls grid-set
+	| All potential file tiles. Check {shower} too.
+	fire grid-set
+	| All potential flood tiles. Check {shower} too.
+	flood grid-set
+ground grid-set(a game) = a.tile-map.ground
+ground-minus-safe grid-set(a game) = a.tile-map.ground-minus-safe
+safe grid-set(a game) = a.tile-map.safe
+walls grid-set(a game) = a.tile-map.walls
+bounds grid-rect(a tile-map) = a.tiles.bounds
+fire (game, grid-set) lens() = tile-map * fire
+flood (game, grid-set) lens() = tile-map * flood
+active-fire-or-flood-tiles grid-set(a game)
+	if a.shower
+		a.tile-map.flood
+	else
+		a.tile-map.fire
+
+tile-object record
+	pos grid-pos
+	dir dir4
+	kind tile-object-kind
+rotate tile-object(a tile-object, rotation relative-dir4)
+	pos: rotate a.pos, rotation
+	dir: a.dir + rotation
+	kind: a.kind
+
+tile-object-kind enum
+	# This is the order they appear in tiles/objects.png
+	puzzle-goal
+	napkin
+	puzzle-empty
+	| Adjacent puzzle-block objects will become a single block.
+	puzzle-block
+	breakable-wall
+	fire
+	flood
+	valve
+	slug
+	slug-npc
+	cookie
+
+slug-id enum
+	alice
+	andy
+	bismarck-and-fargo
+	bob
+	boggy
+	bullton
+	cayenne
+	chilly
+	chip
+	cola
+	cookie
+	cushy
+	dandelion
+	dozer
+	dreamer
+	drowsy
+	dudley
+	echo
+	ed-and-ned
+	fizzy
+	flavio
+	freezy
+	frosty
+	glooper
+	gloppy
+	gluey
+	greaser
+	gunky
+	gummy
+	habanero
+	holly
+	hustle-and-bustle
+	icy
+	lax
+	nod
+	oatmeal
+	oozy
+	oyl
+	pan
+	plush
+	poppy
+	pyro
+	scrubby
+	serrano
+	shadow
+	slacker
+	sleeping-beauty
+	sleepy
+	sloth
+	slushy
+	smokey
+	snory
+	snoozy
+	snowy
+	snowflake
+	slippy
+	slithy
+	miles-and-pounds
+	sludgy
+	slugette
+	slugicus
+	sluggus
+	sluggo
+	sluggy
+	slug-jr
+	slug-of-adversity
+	slug-of-beginnings
+	slug-of-conquest
+	slug-of-puzzles
+	slug-of-returning
+	slug-of-wisdom
+	slugson
+	slugsly
+	slug-sr
+	slug-x
+	buck-and-penny
+	soggy
+	soppy
+	sylvester
+	umbra
+	wendy
+	wooly
+	wormy
+	zanzibar
+show string(a slug-id)
+	match a
+	as alice then "Alice"
+	as andy then "Andy"
+	as bismarck-and-fargo then "Bismarck and Fargo"
+	as bob then "Bob"
+	as boggy then "Boggy"
+	as buck-and-penny then "Buck and Penny"
+	as bullton then "Bullton"
+	as cayenne then "Cayenne"
+	as chilly then "Chilly"
+	as chip then "Chip"
+	as cola then "Cola"
+	as cookie then "Cookie"
+	as cushy then "Cushy"
+	as dandelion then "Dandelion"
+	as dozer then "Dozer"
+	as dreamer then "Dreamer"
+	as drowsy then "Drowsy"
+	as dudley then "Dudley"
+	as echo then "Echo"
+	as ed-and-ned then "Ed and Ned"
+	as fizzy then "Fizzy"
+	as flavio then "Flavio"
+	as freezy then "Freezy"
+	as frosty then "Frosty"
+	as glooper then "Glooper"
+	as gloppy then "Gloppy"
+	as gluey then "Gluey"
+	as greaser then "Greaser"
+	as gunky then "Gunky"
+	as gummy then "Gummy"
+	as habanero then "Habanero"
+	as holly then "Holly"
+	as hustle-and-bustle then "Hustle and Bustle"
+	as icy then "Icy"
+	as lax then "Lax"
+	as miles-and-pounds then "Miles and Pounds"
+	as nod then "Nod"
+	as oatmeal then "Oatmeal"
+	as oozy then "Oozy"
+	as oyl then "Oyl"
+	as pan then "Pan"
+	as plush then "Plush"
+	as poppy then "Poppy"
+	as pyro then "Pyro"
+	as scrubby then "Scrubby"
+	as serrano then "Serrano"
+	as shadow then "Shadow"
+	as slacker then "Slacker"
+	as sleeping-beauty then "Sleeping Beauty"
+	as sleepy then "Sleepy"
+	as sloth then "Sloth"
+	as slushy then "Slushy"
+	as smokey then "Smokey"
+	as snoozy then "Snoozy"
+	as snory then "Snory"
+	as snowy then "Snowy"
+	as snowflake then "Snowflake"
+	as slippy then "Slippy"
+	as slithy then "Slithy"
+	as sludgy then "Sludgy"
+	as slugette then "Slugette"
+	as slugicus then "Slugicus"
+	as sluggus then "Sluggus"
+	as sluggo then "Sluggo"
+	as sluggy then "Sluggy"
+	as slug-jr then "Slug Jr"
+	as slug-of-adversity then "Slug of Adversity"
+	as slug-of-beginnings then "Slug of Beginnings"
+	as slug-of-conquest then "Slug of Conquest"
+	as slug-of-puzzles then "Slug of Puzzles"
+	as slug-of-returning then "Slug of Returning"
+	as slug-of-wisdom then "Slug of Wisdom"
+	as slugson then "Slugson"
+	as slugsly then "Slugsly"
+	as slug-sr then "Slug Sr"
+	as slug-x then "Slug X"
+	as soggy then "Soggy"
+	as soppy then "Soppy"
+	as sylvester then "Sylvester"
+	as umbra then "Umbra"
+	as wendy then "Wendy"
+	as wooly then "Wooly"
+	as wormy then "Wormy"
+	as zanzibar then "Zanzibar"

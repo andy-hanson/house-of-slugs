@@ -1,0 +1,267 @@
+import
+	grid/bounded-grid
+	grid/geometry
+	grid/grid-set
+	grid/mut-bounded-grid
+	grid/util/reachability
+	keen/random/random
+	keen/random/util
+	../util/perf
+
+maze-config record
+	fraction-fill-dead-ends float
+	fraction-fill-connections float
+make-maze grid-set
+	# All positions where we should fill in a maze
+	maze-tiles grid-set
+	# Points outside of the maze that the maze must connect to
+	required-possibly-outside-points grid-set
+	config maze-config
+do random
+	perf-start = perf-now
+	finally end-make-maze perf-start
+	assert any required-possibly-outside-points
+	bounds = maze-tiles.bounds
+	assert config.fraction-fill-dead-ends <= config.fraction-fill-connections
+	assert is-contiguous maze-tiles else
+		log-error "Maze tiles are not contiguous!", show maze-tiles
+		todo
+	required-points grid-pos[] = for point in required-possibly-outside-points
+		if maze-tiles[point]
+			point
+		else
+			find! point.neighbors4, maze-tiles[it]
+	# Expand the bounds so we don't have to worry about querying out-of-bounds
+	grid grid = make bounds.expand, {if maze-tiles[it] then wall else out-of-bounds}
+	state state = required-points: required-points.to, n-floor-tiles: 0, grid: grid
+
+	# Phase 1: Ensure all required points are connected
+	fill-in-point state, required-points[0]
+	for required-point in required-points[1 .. end]
+		do unless grid[required-point] == ground
+		if second-point = random-where required-point.neighbors4, grid[it] == wall
+			loop-erased-random-walk state, required-point, second-point, must-connect
+		else
+			assert some required-point.neighbors4, grid[it] == ground
+			fill-in-point state, required-point
+
+	# Phase 2: Fill in the maze with dead ends
+	target-dead-end-tiles mut nat = to round maze-tiles.size.to::float * config.fraction-fill-dead-ends
+	while state.n-floor-tiles < target-dead-end-tiles
+		positions (grid-pos, grid-pos)? = first-random-where bounds.all-positions, of pos grid-pos
+			do if grid[pos] == wall
+			do if (count-ground-neighbors grid, pos) == 0
+			do if second = random-where pos.neighbors4, {grid[it] == wall and (count-ground-neighbors grid, it) == 0}
+			pos, second
+		if pos, second-pos = positions
+			loop-erased-random-walk state, pos, second-pos, making-dead-ends
+		else
+			log "WARN: FINISHED EARLY WITH DEAD ENDS", state.n-floor-tiles, target-dead-end-tiles
+			target-dead-end-tiles := state.n-floor-tiles
+
+	# Phase 3: Add additional ways to get around
+	target-connection-tiles mut nat = to round maze-tiles.size.to::float * config.fraction-fill-connections
+	while state.n-floor-tiles < target-connection-tiles
+		positions phase-3-kind? = first-random-where bounds.all-positions, of first
+			do if grid[first] == ground
+			do if second = random-where first.neighbors4, {grid[it] == wall and (count-ground-neighbors grid, it) <= 2}
+			second-neighbors = count-ground-neighbors grid, second
+			match second-neighbors
+			as 1
+				if third = random-where second.neighbors4, {grid[it] == wall and (count-ground-neighbors grid, it) == 0}
+					long-bridge second, third
+			as 2
+				###
+				Can create a straight 1-tile bridge: ('+' is the new position)
+					•+•
+				But do not create a square:
+					+•
+					•
+				###
+				neighbor0, neighbor1 = only2! filter::grid-pos[] second.neighbors4, grid[it] == ground
+				if second - neighbor0 == neighbor1 - second
+					short-bridge second
+			else
+				throw unreachable
+		if positions
+			match positions
+			as short-bridge
+				fill-in-point state, positions.middle
+			as long-bridge
+				loop-erased-random-walk state, positions.second, positions.third, making-connections
+		else
+			log "WARN: FINISHED EARLY WITH CONNECTIONS", state.n-floor-tiles, target-dead-end-tiles
+			target-connection-tiles := state.n-floor-tiles
+
+	res = positions-where grid, it.b == ground
+	assert is-contiguous res
+	assert every required-points, res[it]
+	res
+
+-phase-3-kind union(short-bridge, long-bridge)
+-short-bridge record(middle grid-pos)
+-long-bridge record(second grid-pos, third grid-pos)
+
+-count-ground-neighbors nat(grid grid, pos grid-pos)
+	count pos.neighbors4, grid[it] == ground
+-count-ground-like-neighbors nat(grid grid, pos grid-pos)
+	count pos.neighbors4, grid[it].is-ground-like
+
+-fill-in-point void(state state, point grid-pos)
+	state.grid[point] := ground
+	state.n-floor-tiles +:= 1
+-remove-point void(state state, point grid-pos)
+	state.grid[point] is ground
+	state.grid[point] := wall
+	state.n-floor-tiles -:= 1
+
+-state record mut
+	required-points grid-set
+	n-floor-tiles mut nat32
+	grid grid
+-grid alias
+	maze-entry mut-bounded-grid
+
+-maze-entry enum
+	wall
+	ground
+	current-walk
+	out-of-bounds
+-is-ground-like bool(value maze-entry)
+	value == ground or value == current-walk
+
+-show string(a maze-entry mut-bounded-grid)
+	show-with-single-char-entries a.to, of x
+		match x
+		as wall
+			" "
+		as ground
+			"•"
+		as current-walk
+			"W"
+		as out-of-bounds
+			"X"
+
+-lerw-kind enum
+	must-connect
+	# Phase where we prefer to make dead ends
+	making-dead-ends
+	# Phase where we prefer to make connections, but not absolutely mandatory
+	making-connections
+-loop-erased-random-walk void
+	state state
+	start grid-pos
+	second-point grid-pos
+	kind lerw-kind
+do random
+	grid = state.grid
+	grid[start] is wall
+	grid[second-point] is wall
+	grid[start] := current-walk
+	grid[second-point] := current-walk
+	history grid-pos mut[] = start, second-point
+	until
+		cur = history.peek!
+		next = random-where cur.neighbors4, {it != history[end - 2] and grid[it] == wall}
+		if not next
+			# Ran into a corner -- this can happen with funny shaped mazes
+			match kind
+			as must-connect
+				until history.size == 2
+					grid[pop! history] := wall
+				# Try from the opposite direction
+				set-reverse history
+				false
+			as making-dead-ends
+				# We started from an unconnected space.
+				# We want the whole maze to be connected, so back out the whole thing.
+				while x = pop history
+					grid[x] := wall
+				true
+			as making-connections
+				true
+		elif next2 = find next.neighbors4, {it != cur and grid[it] == current-walk}
+			until history.peek! == next2 or history.size == 2
+				grid[pop! history] := wall
+			if history.size == 2
+				# Try from the opposite direction, in case the initial two points head us into a corner.
+				set-reverse history
+			false
+		else
+			grid[next] is wall
+			grid[next] := current-walk
+			history ~= next
+			if some next.neighbors4, grid[it] == ground
+				###
+				We might be making a square: (below '+' is the newly added path)
+					••
+					•+++
+				This is unavoidable if we want to connect to a jagged line.
+				To reduce squares, remove the opposite corner if it does not connect to anything:
+					•
+					•+++
+				###
+				corners = makes-a-square grid, next
+				if any corners
+					if some corners, {state.required-points[it] or (count-ground-like-neighbors grid, it) >= 3}
+						###
+						Corners can't be removed. But can back out.
+						Note: This is unintuitive that in the 'making-connections' phase we avoid the connection here.
+						In the 'making-dead-ends' phase, we started from a random unconnected point,
+						so we *have* to finish the connection or else it will be unreachable.
+						In the 'making-connections' phase, we started from a connection point,
+						so we would rather get a dead end than a square.
+						###
+						if kind == making-connections
+							grid[pop! history] := wall
+					else
+						if every corners, grid[it] == current-walk
+							grid[pop! history] := wall
+						else
+							for corner in corners
+								if grid[corner] == current-walk
+									# This breaks history, but we are about to finish anyway
+									remove-one-value history, corner
+									grid[corner] := wall
+								else
+									remove-point state, corner
+				true
+			else
+				false
+	for x in history
+		grid[x] is current-walk
+		grid[x] := ground
+	state.n-floor-tiles +:= history.size
+
+-remove-one-value[t] void(a t mut[], value t) t equal
+	_ = remove-at a, index-of! a, value
+
+# If the input position is part of any squares, returns the opposite corners
+-makes-a-square grid-pos[](grid maze-entry mut-bounded-grid, pos grid-pos)
+	for* dir in members::dir4[]
+		next = pos + dir
+		next2 = pos + dir.rotate-right
+		other-corner = pos + dir + dir.rotate-right
+		if is-ground-like grid[next] and is-ground-like grid[next2]and is-ground-like grid[other-corner]
+			- other-corner
+
+| 'a' is the initial corner. 'b' and 'c' are its neighbors. Result is the 4th corner.
+-other-side-of-square grid-pos(a grid-pos, b grid-pos, c grid-pos)
+	a + (b - a) + (c - a)
+test
+	other-side-of-square (2, 3), (3, 3), (2, 4) is (3, 4)
+
+test
+	a maze-entry mut-bounded-grid = make (bottom-left: (0, 0), top-right: (4, 2)), of pos
+		match pos.x
+		as 0 then wall
+		as 1 then ground
+		as 2 then current-walk
+		as 3 then out-of-bounds
+		else then throw unreachable
+	show a is quote
+		0, 0 to 4, 2
+		┌────┐
+		│ •WX│
+		│ •WX│
+		└────┘

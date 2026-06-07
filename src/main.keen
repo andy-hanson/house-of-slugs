@@ -1,0 +1,157 @@
+import
+	game-backend/abstract-backend
+	game-backend/backend
+	grid/geometry
+	keen/col/enum-map
+	keen/col/enum-set
+	keen/col/index-set
+	keen/io/print
+	keen/io/process
+	keen/io/time
+	keen/js/browser
+	keen/parse
+	keen/random/random
+	keen/random/secure-random
+	keen/random/sfc
+	./game/areas
+	./game/area-setup
+	./game/game-types
+	./game/game-util
+	./house-of-slugs
+	./util/perf
+
+main void() global
+	forbid command-line-args.size > 1 else error "Only takes a single argument"
+	do unless command-line-args == ("credits",) else print-credits
+	do unless command-line-args == ("slugs",) else print-slugs
+	test-state = get-test-state
+	if test-state then enable-perf
+	save = if test-state
+		test-state test-state
+	else
+		load-save-file else
+			new-game-seed nat64 = secure-random-seed
+			log "new game seed is", new-game-seed
+			new-game new-game-seed
+	backend-args = backend-args test-state
+	the random = sfc32 if test-state
+		0xdeadbeefcafebabe
+	else
+		res nat64 = secure-random-seed
+		log "random seed is", res
+		res
+	game mut = load-game save, monotime
+	if test-state == the-end
+		game := set game, ui-state, ui-state-the-end credits, slugs-list-info game
+	hos = house-of-slugs game, the::random
+	backend-main backend-args, hos
+
+load-save-file persistent-state?() global
+	do if text string = load-save-file
+	try
+		to::persistent-state parse kid, text
+	catch as parse-error
+		log-error "Corrupted save file, can't parse"
+		()
+	catch e as deserialize-error
+		log-error quote
+			Corrupted save file, does not match expected format.
+			Expected: {e.expected}
+			Actual: {e.value}
+		()
+
+-print-credits void() global
+	for credits in all-credits
+		print "\n=== {credits.kind} ===\n"
+		for author in credits.authors
+			print author
+
+-print-slugs void() global
+	print show all-slugs
+	print "Total non NPC: {sum areas-with-unique-slugs, it.all-slugs.rest.size}"
+	print "Total: {members::slug-id[].size}"
+
+-all-slugs json()
+	for::json-object area in areas-with-unique-slugs
+		- area.to
+		-
+			slugs = all-slugs area
+			count: slugs.npc.size + slugs.rest.size
+			npc: to sort map::string[] slugs.npc, it.show
+			rest: to sort map::string[] slugs.rest, it.show
+
+-slugs record
+	npc slug-id[]
+	rest slug-id[]
+-all-slugs slugs(area area)
+	config = area-config area
+	npc: map config.npcs, it.b
+	rest:
+		-- map config.sprinkle.slugs, it.id
+		-- map config.tutorial-slugs, it.b
+
+-get-test-state initial-state?() global
+	if java
+		forbid command-line-args.size > 1 else error "Only takes a single argument"
+		if x = only command-line-args
+			to::initial-state x
+	elif js
+		?to url-search-params["state"]
+	else
+		throw not-implemented
+
+-backend-args backend-args(is-test bool)
+	music: not is-test
+	desired-framerate: 60
+
+-initial-state enum
+	backyard
+	garden
+	basement
+	bathroom
+	bedroom
+	final
+	foyer
+	kitchen
+	the-end
+
+-test-state persistent-state(initial-state initial-state)
+	match initial-state
+	as backyard
+		base-test-state basement, backyard
+		then set flashlight-parts, all
+	as basement
+		base-test-state foyer, basement
+		then set flashlight-parts, all
+	as bathroom
+		base-test-state foyer, bathroom
+	as bedroom
+		base-test-state foyer, bedroom
+	as final
+		base-test-state basement, backyard
+		then set solved-puzzles,
+			- backyard, (0, 1)
+		then modify progress-flags, it | player-can-touch-slugs
+	as foyer
+		base-test-state garden, foyer
+	as garden
+		base-test-state (), garden
+		then set progress-flags, ()
+	as kitchen
+		base-test-state foyer, kitchen
+	as the-end
+		base-test-state basement, backyard
+		then set equipment, all
+		then set flashlight-parts, all
+		then set visited-areas, all
+		then set has-talked-to-slug, make {1}
+
+-base-test-state persistent-state(prev area?, cur area)
+	new-game 0xdeadbeefcafebabe, hard
+	then set prev-area, prev
+	then set cur-area, cur
+	then set visited-areas,
+		- garden
+		-- from-option prev
+		- cur
+	then set inventory, (cookie::basic-item, smoke-bomb, cookie::basic-item, smoke-bomb)

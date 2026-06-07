@@ -1,0 +1,13 @@
+import
+	keen/io/duration
+	keen/math/geom2d/aa-rect
+	keen/math/vec
+	../animation
+
+test
+	a animation-info =
+		tiles-to-draw: bottom-left: (0, 0), top-right: (10, 10)
+		now: 0.seconds
+	interpolated-tiles-to-draw a, 0.25.seconds, (bottom-left: (0, 1), top-right: (10, 11)) is
+		bottom-left: 0, 0.5
+		top-right: 10, 10.5

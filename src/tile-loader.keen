@@ -1,0 +1,167 @@
+import
+	grid/geometry
+	grid/bounded-grid
+	grid/mut-bounded-grid
+	grid/sparse-grid
+	keen/bits
+	keen/parse
+	keen/random/random
+	./game/game-types
+
+| This is the tile map as stored in the file, with no modifications.
+| Game logic should usually use {tile-map} instead.
+tile-map-data record
+	tile-set tile-set
+	data_ tile-id sparse-grid
+	objects tile-object[]
+rotate tile-map-data(a tile-map-data, rotation relative-dir4)
+	tile-set: a.tile-set
+	data_: rotate a.data_, rotation
+	objects: for x in a.objects
+		rotate x, rotation
+
+| This is only used for the "tiles" layer, not the object tiles
+tile-set record
+	| Width and height of the tileset image, in tiles
+	tiles-count nat-size
+	tile-image-size nat-size
+	| Keyed by {tile-id}
+	tiles tile-flags[]
+
+tile-flags flags
+	ground
+	safe
+	wall
+
+tile-and-dir record
+	tile tile-id
+	dir dir4
+
+| Tiled uses +y = down, but the {tile-map} uses +y = up.
+| Y coordinates in the game will be the negative of Y coordinates in Tiled.
+load-tile-map tile-map-data(tsj-file string, tmj-file string) random
+	tile-set = to::tile-set to::tsj-file parse json, tsj-file
+	map tmj-file = to parse json, tmj-file
+	tiles-layer, objects-layer = only2! map.layers
+	(tiles-layer.name, objects-layer.name)::layer-name[] is tiles, objects
+	tiles-tileset, objects-tileset = only2! map.tilesets
+	tiles = grid-from-layer tiles-layer, tile-set.tiles-count.area.to, tiles-tileset.firstgid
+	objects = grid-from-layer objects-layer, max-value, objects-tileset.firstgid
+	tile-set: tile-set
+	data_: make tiles.bounds, {tiles[it].?tile}
+	objects: for* pos, value in objects
+		if value
+			- pos, value.dir, value.tile.to!
+
+grid-from-layer tile-and-dir? bounded-grid(layer tmj-layer, tile-set-size nat8, first-tile-id nat8)
+	grid tile-and-dir? mut-bounded-grid = make (upside-down compute-grid-bounds layer.chunks), {}
+	for chunk in layer.chunks
+		# In Tiled coordinates
+		chunk-bottom-left grid-pos = chunk.x, chunk.y
+		for index, element in with-index chunk.data_
+			do unless element == 0
+			relative-to-chunk grid-displacement =
+				x: to index % chunk.width
+				y: to index / chunk.height
+			value = decode-tile element, first-tile-id
+			if value
+				assert value.tile < tile-set-size else
+					log-error "Tile is {value.tile}, max is {tile-set-size - 1}"
+					index-too-big value.tile, tile-set-size
+			grid[upside-down chunk-bottom-left + relative-to-chunk] := value
+	shrink-to-where grid, {it}
+	move-to grid
+
+-decode-tile tile-and-dir?(raw nat32, first-tile-id nat8)
+	do unless raw == 0
+	tile: (to::nat8 raw & 0x0fffffff) - first-tile-id
+	dir: match raw >> 28
+	as 0 then north
+	as 0b0110 then west
+	as 0b1100 then south
+	as 0b1010 then east
+	else then throw error "Unrecognized direction {raw >> 28}"
+
+-upside-down grid-rect(a grid-rect)
+	left: a.left
+	right: a.right
+	# In tiled coordinates, the top is inclusive and the bottom is exclusive.
+	# In Keen, the bottom is inclusive and the top is exclusive.
+	# So shift everything up by 1.
+	bottom: -a.top + 1
+	top: -a.bottom + 1
+-upside-down grid-pos(a grid-pos) = a.x, -a.y
+
+-compute-grid-bounds grid-rect(chunks tmj-chunk[])
+	res mut grid-rect = ()
+	for chunk in chunks
+		res |:= rect chunk
+	res
+
+-to tile-set(a tsj-file)
+	tiles-count:
+		width: a.imagewidth / a.tilewidth
+		height: a.imageheight / a.tileheight
+	tile-image-size: a.tilewidth, a.tileheight
+	tiles:
+		lookup tile-flags[tile-id] = map a.tiles, it.to
+		max-tile-id = max-of! lookup, it.a
+		for tile-id in max-tile-id + 1
+			lookup[tile-id] else ()
+-to (tile-id, tile-flags)(a tsj-tile)
+	flags_ mut tile-flags = ()
+	for property in a.properties
+		flags_ |:= property.name
+	- a.id
+	- flags_
+
+| Tiled tile set file.
+-tsj-file record
+	imageheight nat16
+	imagewidth nat16
+	tileheight nat16
+	tilewidth nat16
+	tiles tsj-tile[]
+-tsj-tile record
+	id tile-id
+	properties tsj-tile-property[]
+-tsj-tile-property record
+	name tile-flags
+	# Currently all properties are flags with value 'true', so just omit that
+
+| Tiled tile map file
+-tmj-file record
+	layers tmj-layer[]
+	tilesets tmj-file-tileset[]
+-tmj-file-tileset record
+	firstgid nat8
+
+-tmj-layer record
+	chunks tmj-chunk[]
+	name layer-name
+layer-name enum(tiles, objects)
+
+-tmj-chunk record
+	| Each element contains both the tile ID and the rotation
+	data_ nat32[]
+	height nat16
+	width nat16
+	x int16
+	y int16
+-rect grid-rect(a tmj-chunk)
+	left: a.x
+	right: a.x + a.width.to
+	bottom: a.y
+	top: a.y + a.height.to
+-to tmj-chunk(a json)
+	data_: a["data"].to
+	height: a["height"].to
+	width: a["width"].to
+	x: a["x"].to
+	y: a["y"].to
+-to json(a tmj-chunk)
+	data: a.data_.to
+	height: a.height.to
+	width: a.width.to
+	x: a.x.to
+	y: a.y.to

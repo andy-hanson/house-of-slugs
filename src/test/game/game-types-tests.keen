@@ -1,0 +1,15 @@
+import
+	grid/geometry
+	keen/col/mut-enum-map
+	../../game/areas
+	../../game/game-types
+
+test
+	count (slug-id, nat8) mut-enum-map = ()
+	for area in areas-with-unique-slugs
+		config = area-config area
+		for _, x in config.npcs then count[x] +:= 1
+		for x in config.sprinkle.slugs then count[x.id] +:= 1
+		for _, x in config.tutorial-slugs then count[x] +:= 1
+	for slug in members::slug-id[]
+		count[slug] is 1 else error "Slug {slug} appears {count[slug]} times"

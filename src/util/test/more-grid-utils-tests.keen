@@ -1,0 +1,23 @@
+import
+	grid/geometry
+	grid/grid-set
+	../more-grid-utils
+
+test
+	opposite-direction north-to-east is east-to-north
+
+test
+	for x in members::curve-kind[]
+		x.opposite-direction.to::in-between-dir is x.to::in-between-dir
+
+test
+	as-in-between-dir north, east is northeast
+
+test
+	as-tunnel-dirs () is ()
+	as-tunnel-dirs ((0, 0),) is ()
+	as-tunnel-dirs ((0, 3), (1, 3)) is east, west
+	as-tunnel-dirs ((0, 0), (0, 1), (1, 0)) is north, east
+	as-tunnel-dirs ((0, 0), (0, 1), (1, 0), (1, 1)) is ()
+	as-tunnel-dirs ((0, 0), (0, 1), (1, 0), (-1, 0)) is ()
+	as-tunnel-dirs ((0, 0), (0, 1), (1, 0), (1, -1)) is north, south

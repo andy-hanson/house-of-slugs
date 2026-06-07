@@ -1,0 +1,101 @@
+| Utilities which don't seem generic enough to put in the grid library
+import
+	grid/geometry
+	grid/grid-set
+
+| Returns non-empty if the set is a line, meaning every position has 2 neighbors except the ends.
+| Returns the directions the tunnel ends face.
+| A single-tile block is never a tunnel.
+as-tunnel-dirs (dir4, dir4)?(a grid-set)
+	do if a.size > 1
+	?sort only2 map-optionally::dir4[] a, of pos
+		do if neighbor = only neighbors-in a, pos
+		assert-exact-dir4 pos - neighbor
+
+curve-kind enum
+	north-to-east
+	east-to-south
+	south-to-west
+	west-to-north
+	north-to-west
+	west-to-south
+	south-to-east
+	east-to-north
+opposite-direction curve-kind(a curve-kind)
+	match a
+	as north-to-east then east-to-north
+	as east-to-south then south-to-east
+	as south-to-west then west-to-south
+	as west-to-north then north-to-west
+	as north-to-west then west-to-north
+	as west-to-south then south-to-west
+	as south-to-east then east-to-south
+	as east-to-north then north-to-east
+to in-between-dir(a curve-kind)
+	match a
+	as north-to-east then northeast
+	as east-to-south then southeast
+	as south-to-west then southwest
+	as west-to-north then northwest
+	as north-to-west then northwest
+	as west-to-south then southwest
+	as south-to-east then southeast
+	as east-to-north then northeast
+as-curve-kind curve-kind?(a dir4, b dir4)
+	match a
+	as north
+		match b
+		as east then north-to-east
+		as west then north-to-west
+		else then ()
+	as east
+		match b
+		as north then east-to-north
+		as south then east-to-south
+		else then ()
+	as south
+		match b
+		as east then south-to-east
+		as west then south-to-west
+		else then ()
+	as west
+		match b
+		as north then west-to-north
+		as south then west-to-south
+		else then ()
+
+in-between-dir enum(northeast, southeast, southwest, northwest)
+as-in-between-dir in-between-dir?(a dir4, b dir4)
+	match a
+	as north
+		match b
+		as west
+			northwest
+		as east
+			northeast
+		else
+			()
+	as east
+		match b
+		as north
+			northeast
+		as south
+			southeast
+		else
+			()
+	as south
+		match b
+		as east
+			southeast
+		as west
+			southwest
+		else
+			()
+	as west
+		match b
+		as north
+			northwest
+		as south
+			southwest
+		else
+			()

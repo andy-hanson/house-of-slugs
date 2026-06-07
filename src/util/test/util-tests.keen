@@ -1,0 +1,15 @@
+import
+	../util
+
+test
+	find-duplicate (1, 2, 1)::nat[] is 1
+	find-duplicate (1, 2, 3)::nat[] is ()
+
+test
+	int = parabolic-interpolator 0, 1, 0.5, 0
+	int is -4, 4, 0
+	int[0] is 0
+	int[0.25] is 0.75
+	int[0.5] is 1
+	int[0.75] is 0.75
+	int[1] is 0

@@ -1,0 +1,87 @@
+import
+	grid/geometry
+	grid/grid-set
+	grid/sparse-grid
+	keen/io/duration
+	keen/math/geom2d/aa-rect
+	keen/math/geom2d/size2
+	keen/math/vec
+	./game/game-types
+	./game/game-util
+
+animation-and-time record
+	anim animation-info
+	| Time since the game started
+	now duration
+	| Time since the last game state update
+	dt duration
+thrown thrown-info?(a animation-and-time) = a.anim.thrown
+
+animation-info record
+	last-time duration
+	last-tiles-to-draw aa-rect32
+	last-smoke smoke sparse-grid
+	thrown thrown-info?
+	prev-tiles-visible grid-set?
+	step step-animation-info
+	prev-for-fade-to-black game?
+new animation-info(tiles-to-draw aa-rect32, now duration)
+	last-time: now
+	last-tiles-to-draw: tiles-to-draw
+	last-smoke: ()
+	thrown: ()
+	prev-tiles-visible: ()
+	step: ()
+	prev-for-fade-to-black: ()
+moved-harley grid-pos?(a animation-info) = a.step.moved-harley
+moved-player grid-pos?(a animation-info) = a.step.moved-player
+slugs slug-animation-info[slug-id](a animation-info) = a.step.slugs
+things thing-to-animate[](a animation-info) = a.step.things
+
+| This is *not* called on every frame!
+| It is called when there is a logical update to the game.
+game-step animation-info
+	a animation-info
+	prev-game game
+	step step-animation-info
+	now duration
+	aspect-ratio size2-32
+do
+	last-time: now
+	last-tiles-to-draw: if step.changed-area
+		tiles-to-draw prev-game, aspect-ratio
+	else
+		interpolated-tiles-to-draw a, (now - a.last-time), tiles-to-draw prev-game, aspect-ratio
+	last-smoke: prev-game.smoke
+	thrown: step.thrown
+	prev-tiles-visible: all-tiles-visible-to-player prev-game
+	step: step
+	prev-for-fade-to-black: if step.changed-area then prev-game
+
+interpolated-tiles-to-draw aa-rect32(anim animation-and-time, prev-tiles-to-draw aa-rect32)
+	interpolated-tiles-to-draw anim.anim, anim.dt, prev-tiles-to-draw
+interpolated-tiles-to-draw aa-rect32(anim animation-info, dt duration, prev-tiles-to-draw aa-rect32)
+	fraction float = min 1, dt / 0.5.seconds
+	lerp anim.last-tiles-to-draw, prev-tiles-to-draw, fraction.to
+
+shower-to-draw aa-rect32[](screen aa-rect32, now duration)
+	anim-time duration = 5.seconds
+	fraction float32 = to (now % anim-time) / anim-time
+	x1 = -screen.width * (1 - fraction)
+	y1 = -screen.height * fraction
+	x2 = screen.width + x1
+	y2 = screen.height + y1
+	for x, y in all-combinations (x1, x2)::float32[], (y1, y2)::float32[]
+		screen + (x, y)
+
+fade-to-black-time duration()
+	2.seconds
+fade-in-time duration()
+	1.seconds
+
+visibility-transition-time duration()
+	0.5.seconds
+
+smoke-transition-time duration()
+	0.5.seconds
+

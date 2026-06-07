@@ -1,0 +1,2 @@
+Images are configured in ../src/images.keen
+Credits are also there

@@ -1,0 +1,582 @@
+import
+	grid/geometry
+	grid/grid-set
+	grid/grid-set-set
+	keen/parse
+	../../game/game-types
+	../../puzzles/puzzle-solver
+
+test
+	bits-for-blocks 3, 1 is 0b11111000,
+	bits-for-blocks 3, 2 is 0b11111000, 0xff
+	bits-for-blocks 10, 3 is 0, 0b11111100, 0xff
+
+-list-transitions block-puzzle-state[](options block-puzzle-options, state block-puzzle-state)
+	puzzle = simple-puzzle map state.blocks, it.occupied-space
+	list-transitions options, puzzle, state
+
+test
+	state block-puzzle-state =
+		player: 0, 0
+		blocks:
+			-
+				color: 0
+				occupied-space: (0, 1), (0, 2)
+				lit: unlit
+				tunnel: ()
+			-
+				color: 1
+				occupied-space: (1, 1),
+				lit: unlit
+				tunnel: ()
+			-
+				color: 2
+				occupied-space: (1, 0), (2, 0)
+				lit: unlit
+				tunnel: ()
+		pillows: ()
+		is-holding-pillow: false
+		shower: false
+	options block-puzzle-options =
+		space: full (3, 3)
+		player-initial-position: 0, 0
+		goal: light-every-block
+		positions-near-valves: ()
+		tunnels: false
+	transitions = list-transitions options, state
+	transitions is
+		-
+			state
+			then set blocks * 0.nth * lit, lit
+			then set blocks * 1.nth * lit, lit
+		-
+			state
+			then set blocks * 2.nth * lit, lit
+			then set blocks * 1.nth * lit, lit
+
+test
+	state = parse-puzzle-state (3, 3), quote
+		┌───┐
+		│   │
+		│ A │
+		│   │
+		└───┘
+	transitions = list-transitions options3x3, state
+	show-solution transitions is quote
+		┌───┐
+		│ A │
+		│   │
+		│   │
+		└───┘
+		┌───┐
+		│   │
+		│  A│
+		│   │
+		└───┘
+		┌───┐
+		│   │
+		│   │
+		│ A │
+		└───┘
+		┌───┐
+		│   │
+		│A  │
+		│   │
+		└───┘
+
+test
+	transitions = list-transitions options4x4, parse-puzzle-state (4, 4), quote
+		┌────┐
+		│    │
+		│ B  │
+		│ B  │
+		│ A  │
+		└────┘
+	show-solution transitions is quote
+		┌───┐
+		│ B │
+		│ B │
+		│ A │
+		│   │
+		└───┘
+		┌───┐
+		│   │
+		│ A │
+		│ A │
+		│  B│
+		└───┘
+		┌───┐
+		│   │
+		│ B │
+		│ B │
+		│A  │
+		└───┘
+
+test
+	transitions = list-transitions options4x4, parse-puzzle-state (4, 4), quote
+		┌────┐
+		│ B  │
+		│ B  │
+		│ A  │
+		│    │
+		└────┘
+	show-solution transitions is quote
+		┌───┐
+		│ A │
+		│ A │
+		│  B│
+		│   │
+		└───┘
+		┌───┐
+		│ B │
+		│ B │
+		│   │
+		│ A │
+		└───┘
+		┌───┐
+		│   │
+		│ B │
+		│ B │
+		│ A │
+		└───┘
+		┌───┐
+		│ B │
+		│ B │
+		│A  │
+		│   │
+		└───┘
+
+test
+	transitions = list-transitions options3x3, parse-puzzle-state (3, 3), quote
+		┌───┐
+		│   │
+		│BB │
+		│AB │
+		└───┘
+	show-solution transitions is quote
+		┌───┐
+		│BB │
+		│AB │
+		│   │
+		└───┘
+		┌───┐
+		│   │
+		│ BB│
+		│ AB│
+		└───┘
+
+test
+	solver blocks-puzzle-solver = options4x4,
+
+	# Can push the big block up or right and walk around it
+	puzzle = puzzle4x4 quote
+		┌────┐
+		│    │
+		│AAA │
+		│AAA │
+		│ AA │
+		└────┘
+	is-solvable solver, puzzle is 8
+
+	# Can push it up, but then can't walk around it
+	puzzle2 = puzzle4x4 quote
+		┌────┐
+		│    │
+		│AAA │
+		│AAA │
+		│ AAA│
+		└────┘
+	is-solvable solver, puzzle2 is ()
+
+	# Push 'A' right, then pull 'B' down
+	puzzle3 = puzzle4x4 quote
+		┌────┐
+		│ BB │
+		│  A │
+		│ AA │
+		│ A  │
+		└────┘
+	is-solvable solver, puzzle3 is 10
+
+	# Push 'A' right, then push 'B' left, then pull 'A' left
+	puzzle4 = puzzle4x4 quote
+		┌────┐
+		│ AA │
+		│  A │
+		│ BA │
+		│ B  │
+		└────┘
+	is-solvable solver, puzzle4 is 10
+
+	# Solution involves pulling 'C'
+	puzzle5 = puzzle4x4 quote
+		┌────┐
+		│ AA │
+		│  A │
+		│ BA │
+		│ B C│
+		└────┘
+	is-solvable solver, puzzle5 is 18
+
+	puzzle6 = puzzle4x4 quote
+		┌────┐
+		│ AA │
+		│  A │
+		│ BA │
+		│ BDC│
+		└────┘
+	is-solvable solver, puzzle6 is 30
+
+	puzzle7 blocks-puzzle = puzzle4x4 quote
+		┌────┐
+		│ AA │
+		│  A │
+		│ BAE│
+		│ BDC│
+		└────┘
+	is-solvable solver, puzzle7 is ()
+
+# Test that it can solve a puzzle using a valve
+test
+	bounds grid-rect = bottom-left: (0, 0), top-right: (3, 4)
+	space block-puzzle-options =
+		space: to bounds
+		player-initial-position: 0, 0
+		goal: 1, 3
+		positions-near-valves: (0, 0),
+		tunnels: false
+	puzzle blocks-puzzle =
+		blocks: parse-blocks quote
+			{show bounds}
+			┌───┐
+			│A C│
+			│AB │
+			│A  │
+			│   │
+			└───┘
+		pillows: ()
+		fire: (2, 2),
+		flood: (1, 1),
+	solution = find-solution! (space,), puzzle
+	show-solution solution is quote
+		┌───┐
+		│A D│
+		│AC │
+		│A  │
+		│ B │
+		└───┘
+		┌───┐
+		│A D│
+		│AC │
+		│AB │
+		│   │
+		└───┘
+		┌───┐
+		│A D│
+		│A  │
+		│AC │
+		│ B │
+		└───┘
+		┌───┐
+		│B D│
+		│B  │
+		│BC │
+		│A  │
+		└───┘
+		shower is on
+		┌───┐
+		│B D│
+		│B  │
+		│BC │
+		│A  │
+		└───┘
+		shower is on
+		┌───┐
+		│A D│
+		│A  │
+		│AC │
+		│ B │
+		└───┘
+		shower is on
+		┌───┐
+		│A D│
+		│A  │
+		│AB │
+		│  C│
+		└───┘
+		shower is on
+		┌───┐
+		│A D│
+		│A  │
+		│ABC│
+		│   │
+		└───┘
+		shower is on
+		┌───┐
+		│A D│
+		│A C│
+		│AB │
+		│   │
+		└───┘
+		shower is on
+		┌───┐
+		│A D│
+		│AC │
+		│AB │
+		│   │
+		└───┘
+		shower is on
+		┌───┐
+		│ACD│
+		│A  │
+		│AB │
+		│   │
+		└───┘
+
+test
+	# Can solve a puzzle with lit blocks
+	bounds grid-rect = bottom-left: (0, 0), top-right: (3, 2)
+	space block-puzzle-options =
+		space: to bounds
+		player-initial-position: 0, 0
+		goal: light-every-block
+		positions-near-valves: ()
+		tunnels: false
+	solution = find-solution! (space,), simple-puzzle parse-blocks quote
+		{show bounds}
+		┌───┐
+		│ABB│
+		│ C │
+		└───┘
+	# Solution is to move the block on the right,
+	# then tap the block above (since it is now adjacent to all)
+	show-solution solution is quote
+		┌───┐
+		│ACC│
+		│ BD│
+		└───┘
+		┌───┐
+		│ACC│
+		│ BD│
+		└───┘
+
+test
+	# Player can travel through a tunnel (and can't push or pull it)
+	options block-puzzle-options =
+		space: full (5, 1)
+		player-initial-position: 0, 0
+		goal: 4, 0
+		positions-near-valves: ()
+		tunnels: true
+	blocks block[] =
+		-
+			color: 0
+			occupied-space: (2, 0), (3, 0)
+			lit: never-lit
+			tunnel: west, east
+	state block-puzzle-state =
+		player: 1, 0
+		blocks: blocks
+		pillows: ()
+		is-holding-pillow: false
+		shower: ()
+	list-transitions options, state is
+		# Go through the tunnel
+		-
+			player: 4, 0
+			blocks: blocks
+			pillows: ()
+			is-holding-pillow: false
+			shower: ()
+		# Push the block
+		-
+			player: 2, 0
+			blocks: set blocks, 0.nth * occupied-space, ((3, 0), (4, 0))
+			pillows: ()
+			is-holding-pillow: false
+			shower: false
+		# Go backwards
+		-
+			player: 0, 0
+			blocks: blocks
+			pillows: ()
+			is-holding-pillow: false
+			shower: ()
+		# Go backwards and pull the block
+		-
+			player: 0, 0
+			blocks: set blocks, 0.nth * occupied-space, ((1, 0), (2, 0))
+			pillows: ()
+			is-holding-pillow: false
+			shower: ()
+
+test
+	# Player can travel through a tunnel and push the block on the other end
+	options block-puzzle-options =
+		space: full (1, 5)
+		player-initial-position: 0, 0
+		goal: 0, 4
+		positions-near-valves: ()
+		tunnels: true
+	blocks block[] =
+		-
+			color: 0
+			occupied-space: (0, 1), (0, 2)
+			lit: never-lit
+			tunnel: south, north
+		-
+			color: 1
+			occupied-space: (0, 3),
+	state block-puzzle-state =
+		player: 0, 0
+		blocks: blocks
+		pillows: ()
+		is-holding-pillow: false
+		shower: ()
+	list-transitions options, state is
+		-
+			player: 0, 3
+			blocks:
+				- blocks[0]
+				- set blocks[1], occupied-space, ((0, 4),)
+			pillows: ()
+			is-holding-pillow: false
+			shower: ()
+
+test
+	# Tunnels protect you from fire
+	options block-puzzle-options =
+		space: full (2, 4)
+		player-initial-position: 0, 0
+		goal: 1, 3
+		positions-near-valves: ()
+		tunnels: true
+	blocks block[] =
+		-
+			color: 0
+			occupied-space: (0, 1), (0, 2)
+			lit: never-lit
+			tunnel: south, north
+	state block-puzzle-state =
+		player: 0, 0
+		blocks: blocks
+		pillows: ()
+		is-holding-pillow: false
+		shower: ()
+	puzzle blocks-puzzle =
+		blocks: map state.blocks, it.occupied-space
+		pillows: ()
+		fire:
+			- 0, 1
+			- 0, 2
+			- 1, 0
+		flood: ()
+	list-transitions options, puzzle, state is
+		-
+			player: 0, 3
+			blocks: blocks
+			pillows: ()
+			is-holding-pillow: false
+			shower: ()
+
+test
+	# Same as above but with a bigger block (which uses a different code path)
+	options block-puzzle-options =
+		space: full (1, 7)
+		player-initial-position: 0, 0
+		goal: 0, 6
+		positions-near-valves: ()
+		tunnels: true
+	blocks block[] =
+		-
+			color: 0
+			occupied-space: (0, 1), (0, 2)
+			lit: never-lit
+			tunnel: south, north
+		-
+			color: 1
+			occupied-space: (0, 3), (0, 4), (0, 5)
+			lit: never-lit
+			tunnel: south, north
+	state block-puzzle-state =
+		player: 0, 0
+		blocks: blocks
+		pillows: ()
+		is-holding-pillow: false
+		shower: ()
+	list-transitions options, state is
+		-
+			player: 0, 6
+			blocks:
+				-
+					color: 0
+					occupied-space: (0, 1), (0, 2)
+					lit: never-lit
+					tunnel: south, north
+				-
+					color: 1
+					occupied-space: (0, 3), (0, 4), (0, 5)
+					lit: never-lit
+					tunnel: south, north
+			pillows: ()
+			is-holding-pillow: false
+			shower: false
+		-
+			player: 0, 3
+			blocks:
+				- blocks[0]
+				- set blocks[1], occupied-space, ((0, 4), (0, 5), (0, 6))
+			pillows: ()
+			is-holding-pillow: false
+			shower: ()
+
+-puzzle4x4 blocks-puzzle(text string)
+	parse-simple-puzzle quote
+		0, 0 to 4, 4
+		{text}
+
+-parse-puzzle-state block-puzzle-state(size nat-size, text string)
+	set = parse grid-set-set, "0, 0 to {size.to::grid-displacement}\n{text}"
+	player mut grid-pos? = ()
+	blocks block[] = for* index, s in with-index set
+		if index == 0
+			player := s.only!
+			()
+		else
+			-
+				color: to index - 1
+				occupied-space: s
+	player: player!
+	blocks: blocks
+	pillows: ()
+	is-holding-pillow: false
+	shower: ()
+
+-parse-simple-puzzle blocks-puzzle(text string)
+	simple-puzzle parse-blocks text
+
+-simple-puzzle blocks-puzzle(blocks grid-set-set)
+	blocks: blocks
+	pillows: ()
+	fire: ()
+	flood: ()
+
+-parse-blocks grid-set-set(text string)
+	parse grid-set-set, text
+
+-options3x3 block-puzzle-options()
+	space: full (3, 3)
+	player-initial-position: 0, 0
+	goal: 2, 2
+	positions-near-valves: ()
+	tunnels: false
+
+options4x4 block-puzzle-options()
+	space: full (4, 4)
+	player-initial-position: 0, 0
+	goal: 3, 3
+	positions-near-valves: ()
+	tunnels: false
+
+-full grid-set(size nat-size)
+	(bottom-left: (0, 0), top-right: size.to::grid-pos)::grid-rect.to

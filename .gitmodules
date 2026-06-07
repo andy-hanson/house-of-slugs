@@ -1,0 +1,9 @@
+[submodule "lib/game-backend"]
+	path = lib/game-backend
+	url = https://github.com/andy-hanson/game-backend
+[submodule "lib/grid"]
+	path = lib/grid
+	url = https://github.com/andy-hanson/grid
+[submodule "lib/puzzle-solver"]
+	path = lib/puzzle-solver
+	url = https://github.com/andy-hanson/puzzle-solver

@@ -1,0 +1,1222 @@
+import
+	game-backend/audio
+	grid/geometry
+	keen/col/enum-map
+	keen/col/enum-set
+	keen/io/duration
+	keen/string/util
+	../animation
+	../music
+	../sounds
+	./game-types
+	./game-util
+	./knobs
+
+beginning-of-game dialog-entry[]()
+	- player quote
+		Looks like it's a bit of a walk to the house.
+		Wait, how do I walk again?
+		(Press the space bar to continue)
+	- player quote
+		Oh yeah, I can use the arrow keys, or WASD.
+		And I can use the space bar to interact with things.
+	-
+		who: player
+		content: "I can remind myself of the controls by pressing Y."
+		post-effect: garden
+
+first-slug dialog-entry[]()
+	- slug-wow, "BUNNY!"
+	- player "I'm a hare actually."
+	- slug "I'm gonna run up and give you a hug!"
+	- player quote
+		It's icky.
+		It's sticky.
+		It's slimy.
+	- player quote
+		How can I avoid getting caught by this slug?
+
+second-slug dialog-entry[]()
+	- slug-wow, "BUNNY!"
+	- slug "Do you have any cookies?"
+	-- multi player,
+		- "Are they all like this?"
+		- quote
+			This slug loves cookies even more than "bunnies".
+			I should throw a cookie down another path
+			and slip past while the slug goes after it.
+		- quote
+			My items are in the upper-left of the screen.
+			To select an item, I can use the C key,
+			then the arrow keys, then the space bar.
+
+first-sleep-gas dialog-entry[]()
+	- player-sleepy, "So… sleepy…"
+
+first-pepper dialog-entry[]()
+	- player-crying, "So spicy!"
+
+first-pepper-recovery dialog-entry[]()
+	- player, "I got over it."
+
+ice-slug-dialogs dialog-entry[][](slug slug)
+	who = slug-normal slug
+	-
+		- who, "Chill out!"
+	-
+		- who, "Freeze!"
+	-
+		- who, "Have an ice day!"
+	-
+		- who, "How about an ice breaker?"
+	-
+		- who, "Ice to meet you!"
+
+player-ice-soda-at-ice-slug-dialog dialog-entry[](slug slug)
+	- player, "Have an ice day!"
+	- slug.slug-normal, "I always do."
+	- player, "Oh right. They're an ice slug."
+
+player-ice-dialogs dialog-entry[][]()
+	# TODO: think of something better .....................................................................
+	-
+		- player, "Ice to meet you!"
+
+soda-slug-dialogs dialog-entry[][](slug slug)
+	who = slug-normal slug
+	# TODO: think of something better .....................................................................
+	-
+		- who, "Get soda'd!"
+	-
+		- who, "I'm pop-ular!"
+
+player-soda-dialogs	dialog-entry[][]()
+	# TODO: think of something better .....................................................................
+	-
+		- player, "Get soda'd!"
+
+first-step-on-slimy dialog-entry[]()
+	- player "It's super slimy here. With each step there's a chance I'll slip."
+
+cant-pick-up-item-inventory-is-full dialog-entry[]()
+	- player "I'd better get rid of some items."
+
+slug-dialog dialog-entry[](game game, slug slug)
+	area = game.area
+	nth-talk = game.has-talked-to-slug[slug.id]
+	difficulty = game.difficulty
+	name = show slug.id
+	who dialog-who = slug-normal slug
+	match slug.id
+	as alice
+		match area
+		as backyard
+			- who, quote
+				I'm {name}.
+				It's been a while, huh?
+		else
+			- who, quote
+				I'm {name}.
+				It's my first day on the job.
+			- player, quote
+				I'm Hazel.
+				It's my first day dodging slugs.
+	as andy
+		- who, quote
+			I'm {name}.
+			I like slugs!
+	as bismarck-and-fargo
+		- who, quote
+			We're {name}.
+			We're a big two-headed ice beam spicy bomb slug.
+			You could say we're a renaissance slug.
+	as bob
+		match area
+		as backyard
+			- who, quote
+				I'm {name}.
+				So you're still around?
+		else
+			- who, quote
+				I'm {name}.
+				It's my second day on the job.
+				I'm learning!
+	as boggy
+		- who, quote
+			I'm {name}.
+			Slugs can't see you through smoke,
+			but they can't see cookies either.
+		- who, "So there is a downside to everything."
+	as bullton
+		- who, quote
+			I'm {name}.
+			Bull slugs like me can charge forward two spaces at once.
+			But only on a straight path.
+	as cayenne
+		- who, quote
+			I'm {name}!
+			Our bombs don't only have pepper in them.
+			Mine have garlic. It's an old family recipe.
+	as chilly
+		- who, quote
+			I'm {name}.
+			I'm an ice guy.
+	as chip
+		- who, quote
+			I'm {name}.
+			I'm spicy on the inside.
+	as cola
+		- who, quote
+			I'm {cola}.
+			Better out than in, I always say.
+	as cookie
+		- who, quote
+			They call me {name}.
+			Because I'm good at cooking.
+	as cushy
+		- who, quote
+			I'm {name}.
+			A slug that's asleep because of a bomb will wake up soon after the smoke clears.
+			But a slug that's holding a hare plushie will sleep soundly.
+	as dandelion
+		- who, quote
+			I'm {name}.
+			I should be out in the garden.
+	as dozer
+		- who, quote
+			They call me {name}.
+			Because I'm so tough.
+	as dreamer
+		- who, quote
+			I'm {name}.
+			What am I dreaming about?
+			This, apparently.
+	as drowsy
+		- who, quote
+			I'm {name}.
+			If you have a slug plushie, a dead end is your friend!
+			You can drop it in front of you and be safe!
+	as dudley
+		- who, quote
+			I'm {name}.
+			Doing pyrotechnics in the bathroom isn't easy, you know.
+			But I've been practicing.
+	as echo
+		- who, quote
+			I'm {name}.
+			I'm {name}.
+			I'm {name}.
+	as ed-and-ned
+		- who, quote
+			We're {name}.
+			Sometimes we block off a hallway without realizing it.
+	as fizzy
+		- who, quote
+			I'm {name}.
+			When I eat ice cream I'm a cream soda.
+	as flavio
+		- who, quote
+			You are in the presence of {name}!
+			Will your life be forever changed?
+			For Flavio has arrived!
+	as freezy
+		- who, quote
+			I'm {name}.
+			I like experimenting with new kinds of popsicles.
+			Maybe you could help?
+	as frosty
+		- who, quote
+			I'm {name}.
+			I'm a jolly, happy soul!
+	as glooper
+		- who, quote
+			I'm {name}.
+			Slugs can smell hares, so we tend to move in your general direction.
+			But if you talked to us before, we wander randomly.
+		- player "So I don't need to worry about you any more?"
+		- who, quote
+			Well, now that I've seen you,
+			I'm obviously going to chase you.
+	as gloppy
+		- who, quote
+			I'm {name}.
+			Each room of the house has 2 sacred treasures and 1 flashlight part.
+			You only need the flashlight parts though.
+	as gluey
+		- who, quote
+			I'm {name}.
+			Did you know puzzles stay solved even if you leave?
+			But items regenerate.
+	as greaser
+		- who, quote
+			I'm {name}.
+			I think I'm pretty cool.
+			Though, doesn't everyone?
+		- player "Not really."
+		- who, "Well not you obviously."
+	as gummy
+		- who, quote
+			I'm {name}.
+			I do yoga every day.
+	as gunky
+		- who, quote
+			I'm {name}.
+			I'm pretty wild on Friday nights.
+	as habanero
+		- who, quote
+			I'm {name}.
+			I'm sweet on the inside.
+	as holly
+		- who, quote
+			I'm {name}.
+			I grow mushrooms.
+	as icy
+		- who, quote
+			I'm {name}.
+			Whatever I touch, turns to snow in my clutch.
+			I'm too much!
+	as lax
+		- who, quote
+			I'm {name}.
+			Last name, Ambition.
+	as nod
+		- who, quote
+			I'm {name}.
+			I dreamt that a hare was chasing me through a maze.
+	as oatmeal
+		- who, quote
+			I'm {name}.
+			I like the pepper bombs, but they should try a peppermint bomb.
+	as oozy
+		- who, quote
+			I'm {name}.
+			I shower every day.
+			I bought some fancy shampoo, but it didn't come with instructions.
+	as oyl
+		- who, quote
+			I'm {name}.
+			I'm a smooth operator.
+	as pan
+		match nth-talk
+		as 0
+			- who, quote
+				I'm {name}.
+				We have a lot of open fires in this kitchen.
+				And these nifty tunnels for traveling over them.
+			- player quote
+				But the tunnel isn't over the fire right now.
+			- who, quote
+				The tunnel works like a block.
+				Face the tunnel and hold the space bar to grab it.
+				Then use the arrow keys push or pull it.
+			- who, quote
+				You can hold shift to turn without moving.
+		else
+			- who, quote
+				Make sure to hold down the space bar, not just press it.
+				Also, you can't move a tunnel while you're inside of it.
+	as plush
+		- who, quote
+			I'm {name}.
+			If they made a plush of me it would be a Plush plush.
+			But they'll probably just make one of you…
+	as poppy
+		- who, quote
+			I'm {name}.
+			I have a bubbly personality.
+	as pyro
+		- who, quote
+			I'm {name}.
+			I like making things go boom.
+	as hustle-and-bustle
+		- who, quote
+			We're {name}.
+			When one of us gets tired, the other one takes over.
+	as scrubby
+		- who, quote
+			I'm {name}.
+			Welcome to the bathroom.
+			We got fun and games.
+		- player "Like what?"
+		- who, quote
+			Turning the shower on and off.
+			By facing a valve and pressing the space bar.
+			It puts out fires, but floods some places.
+		- who, quote
+			When the shower is on, bombs won't work.
+			It also washes away smoke.
+			But you'll defrost faster.
+		- player "Why would I be defrosting?"
+		- who, "Heh … you'll see."
+	as serrano
+		- who, quote
+			I'm {name}.
+			Not Cyrano. But I did play the role once.
+			Getting out of character was confusing.
+	as shadow
+		match nth-talk
+		as 0
+			- who, quote
+				I'm {name}.
+				The slug who always gets you if you don't have a flashlight.
+			-- if game.has-talked-to-slug[umbra] != 0
+				- player "{umbra} said that too."
+				- who, "It was a team effort."
+			else
+				- player "Now I know."
+			- who, quote
+				The puzzles in the basement are a bit different.
+				There's no switch to step on.
+				You have to get all the blocks lit up at once.
+		as 1
+			- player "How do I light up the blocks?"
+			- who, quote
+				Press the space bar to tap the block in front of you.
+				That switches its light on or off.
+				But when you tap a block, all blocks touching it also get tapped.
+		else
+			- player quote
+				When I turn on one block, another turns off.
+				I can't get them all on at once.
+			- who, "Try moving the blocks to change which are connected."
+	as slacker
+		- who, quote
+			I'm {name}.
+			I'm here, what more do you want?
+	as sleeping-beauty
+		- who, quote
+			I'm {name}.
+			But I'm awake.
+			What am I now?
+	as slippy
+		- who, quote
+			I'm {name}.
+			I'm the bogey on your tail!
+	as slithy
+		- who, quote
+			I'm {name}.
+			I gyre! I gimble!
+	as sleepy
+		match nth-talk
+		as 0
+			- who, quote
+				I'm Sleepy.
+				Welcome to the bedroom.
+				We keep it dark in here so we can nap.
+			- who, quote
+				We have night lights in the ceiling
+				that follow anything that moves.
+				But sleeping slugs are completely in the dark.
+			- who, quote
+				We just nap wherever we feel like.
+				If someone is napping in your way, just wake them up.
+				…but you might want to think of an escape plan first.
+		as 1
+			- player "How do I wake them up?"
+			- who, "The space bar hasn't failed you yet."
+		else
+			- player "I was thinking I could use a bomb to wake them up."
+			- slug "If bombs woke me up I'd never get any sleep around here."
+	as sloth
+		- who, "..."
+		- player "Aren't you going to say something?"
+		- who, "I am {name}."
+	as smokey
+		- who, quote
+			I'm {name}.
+			When a slug is in smoke, we always move fowards if possible.
+	as miles-and-pounds
+		- who, quote
+			We're {name}.
+			We like to test out combinations of foods.
+			Eating with two mouths at once is an experience.
+	as sludgy
+		- who, quote
+			I'm {name}.
+			People always get me confused with {sluggy}.
+			But we're totally different.
+	as slugette
+		- who, match area
+		as garden
+			quote
+				I'm {name}.
+				Don't frette.
+				I'll gette you yette. You bette!
+		else
+			quote
+				I'm {name}.
+				I hope you didn't forgette me.
+	as sluggo
+		- who, match area
+		as garden
+			quote
+				I'm {name}.
+				Do you remember the last safe zone?
+				You never know when you'll need it.
+		else
+			quote
+				I'm {name}.
+				That's actually a nickname.
+				My legal name is Slugslugslug Slugslug Slug.
+	as sluggus
+		match area
+		as garden
+			- who, quote
+				I'm {name}.
+				I'm pretty old fashioned,
+				except when it comes to music.
+		else
+			- who, quote
+				I'm {name}.
+				Do you like this music? You could download it.
+				Press Enter then Space a few times to see the credits.
+	as sluggy
+		match area
+		as garden
+			- who, quote
+				I'm {name}.
+				Did you know you can eat the cookies yourself?
+				Just throw it at yourself and you'll catch it with your mouth.
+			- player "So I'm not the only one who eats cookies that way."
+		else
+			- who, quote
+				I'm {name}.
+				My parents are both creative professionals!
+	as slugicus
+		match area
+		as garden
+			- who, quote
+				I'm {name}.
+				I'm training for a marathon.
+		else
+			- who, quote
+				I'm {name}.
+				While you were busy, I ran around the house 100 times.
+				Well, 99.5 since I'm in the back…
+	as slug-jr
+		- who, match area
+		as garden
+			quote
+				I'm {name}.
+				My dad inspired me to get into slugging.
+		else
+			quote
+				I'm {name}.
+				Chasing you has given me the confidence to be a slug.
+	as slug-of-adversity
+		match area
+		as garden
+			match nth-talk
+			as 0
+				match difficulty
+				as easy
+					- who, quote
+						I am the {name}.
+						I'm actually pretty easy-going…
+					- who, quote
+						Press the Enter key to pause the game.
+						Then press left and right to change the difficulty.
+						This resets the area, so the best time to do it is now.
+				as normal
+					- who, "You must be the sort of person who wants to be normal all the time."
+				as hard
+					- who, quote
+						Will you be victorious? Or will you be slugged?
+						Either way it will be glorious.
+			as 1
+				match difficulty
+				as easy
+					- player, "How do I open the menu again?"
+					- who, "Press the Enter key."
+					- player, "What difficulty is right for me?"
+					- who, "Sources say … easy."
+				as normal
+					- who, "I bet you always play as Mario."
+				as hard
+					- who, quote
+						Shoot for the waffles!
+						Even if you miss, you will
+						land among the slugs.
+			else
+				match difficulty
+				as easy
+					- player, "So how do I open the menu again?"
+					- who, "The Enter key!"
+				as normal
+					- player "Sometimes when I'm in a weird mood I play as Doctor Mario."
+				as hard
+					- player "This is pretty easy so far."
+					- who, "You're standing on the starting line…"
+		else
+			match nth-talk
+			as 0
+				match difficulty
+				as easy
+					- who, quote
+						It's me, the {name}.
+						Once you get into the maze, there are no more items.
+						You'll be fine though.
+				as normal
+					- who, quote
+						It's me, the {name}.
+						Once you get into the maze, there are no more items.
+				as hard
+					- who, quote
+						It's me, the {name}.
+						Soon there will be no more items.
+						Can you survive with your wits alone?
+					- slug if game.inventory.size < game.max-inventory / 2
+						quote
+							Or … just go back and get some items.
+							It's up to you.
+					else
+						quote
+							It looks like you brought plenty of items though.
+			else
+				match difficulty
+				as easy
+					- who, quote
+						If you bring in a bunch of items, this will be a cakewalk.
+						The perfume is especially overpowered.
+				as normal
+					- who, quote
+						You could always head back and get more items.
+				as hard
+					- who, quote
+						It's tough, but it would be a real shame
+						to switch to easy mode at this point.
+						Keep trying!
+	as slug-of-beginnings
+		match area
+		as garden
+			match nth-talk
+			as 0
+				- who, quote
+					I am the {name}.
+					That's actually my name.
+					Since I'm the first born.
+				- who, quote
+					Normally I'd run up and give you a hug,
+					but you're standing on a checkered tile.
+				- who, "The rules say I can't step on a checkered tile."
+				- player quote
+					So you're just stuck here forever?
+					Seems kind of boring.
+				- who, quote
+					I have a hobby of pressing the Shift key.
+					It really passes the time.
+				- who, quote
+					If you ever need something to pass you...
+					just shift, shift away!
+			else
+				- player "You're right, pressing the shift key is pretty fun."
+				- who, "FuNfUnFuN"
+		else
+			if player-can-touch-slugs game
+				- who, quote
+					I'll guard the exit.
+					Harley can jump up to 2 spaces only.
+					Use plushies to block off spaces she would jump to.
+			else
+				- who, quote
+					It's me, the {name}.
+					Harley is in the back of the backyard.
+					Working hard on … Harley things.
+				-- if is-full game.equipment
+					- who, quote
+						Wow, you found all the sacred treasures!
+				elif not any game.equipment
+					- who, quote
+						Wow…
+						You made it here without any sacred treasures!
+				else
+					for missing-area, missing-equipment in list-missing-equipment game
+						base = quote
+							In the {missing-area}…
+							There is still a {missing-equipment[0]}
+						rest = join "", for e in missing-equipment[1 .. end] then "\nand a {e}"
+						slug "{base}{rest}."
+	as slug-of-conquest
+		match nth-talk
+		as 0
+			- who, quote
+				I am the {name}.
+				Have I conquered your interest?
+			- who, quote
+				If you want something,
+				face it and press the space bar.
+				Then it shall be yours.
+		else
+			- who, quote
+				I'm flattered …
+				but I was talking about the cookies, not me.
+	as slug-of-puzzles
+		match nth-talk
+		as 0
+			- who, quote
+				I am the {name}.
+				Specifically block puzzles.
+			- who, quote
+				Press and hold the space bar
+				to grab the block in front of you.
+				Then move to push or pull the block.
+			- who, quote
+				When you step on the switch,
+				the blocks will blow up and you can enter.
+		as 1
+			- player quote
+				I can't seem to drag a block to the side.
+				Only forwards or backwards.
+			- who, quote
+				Then you must solve the puzzle
+				while only moving blocks forwards or backwards.
+			- player "So wise!"
+		else
+			- player "So how do you guys get into the house?"
+			- who, "We're good at puzzles."
+	as slug-of-returning
+		match nth-talk
+		as 0
+			- who, quote
+				I am the {name}.
+				If you ever tire of us, just close the window.
+				The game is saved at each new area, like this one.
+			- who, quote
+				However, if you are using a "Private window"…
+				You must do it all in one go.
+		else
+			- player quote
+				I'm back.
+			- who, quote
+				So I am not the only one who is of returning…
+	as slug-of-wisdom
+		match nth-talk
+		as 0
+			- who, "I am the {name}."
+			- player "I'm just here for some waffles."
+			- who, quote
+				I haven't heard anything about those.
+				The answers you seek…
+				might be in the basement.
+		else
+			- player "O slug of wisdom, where is the basement?"
+			- who, "According to my prognostications …"
+			- who, "the basement is …"
+			- who, "under the ground …"
+			- player "So wise!"
+	as slugsly
+		- who, match area
+		as garden
+			quote
+				I'm {name}.
+				If you follow right behind a slug, they won't see you.
+				Unless something makes them turn around, like a dead end.
+		else
+			quote
+				I'm {name}.
+				I'm friends with {hustle-and-bustle}.
+	as slugson
+		match area
+		as garden
+			- who, quote
+				I'm {name}.
+				Even if a slug is right behind you (like me!), you can still get to a safe zone.
+				But if you stop to throw a cookie, I'll get you.
+		else
+			- who, quote
+				I'm {name}.
+				I'm slug as a bug in a rug.
+	as slug-sr
+		- who, match area
+		as garden
+			quote
+				I'm {name}.
+				My son recently graduated to become a full slug.
+		else
+			quote
+				I'm {name}.
+				I'm pretty much at the top of the slug world right now.
+				Maybe I'll retire…
+	as slug-x
+		- who, match area
+		as garden
+			quote
+				I'm {name}.
+				In case you haven't noticed, we only move when you do.
+				So there is no need to hurry.
+		else
+			quote
+				I'm {name}.
+				I'm pretty inconspicuous…
+				Since I don't fire ice beams or soda or anything…
+	as buck-and-penny
+		- big-slug, quote
+			We're {upper-case name}.
+			Sometimes we do our own separate things.
+			It helps to be long enough to be in two different rooms.
+	as slushy
+		- who, quote
+			I'm {name}.
+			Maybe you could spray some soda at me?
+	as snoozy
+		match nth-talk
+		as 0
+			- who, quote
+				I'm {name}.
+				You look like you can't figure out
+				how to operate a plushie.
+			- player "…"
+			- who, quote
+				The slug plushies require both hands to carry.
+				Press the space bar or to pick one up.
+				Press the space bar again to set it down.
+			- who, quote
+				You can't use items or move blocks while holding a plushie.
+			- who, quote
+				Also, since it's technically a slug,
+				you can't carry it past a checkered tile.
+				Rules are rules.
+		as 1
+			- player "What are the slug plushies good for?"
+			- who, "The real slugs can't go through them."
+		else
+			- player "Why are there so many?"
+			- who, "Why do you eat so many waffles?"
+	as snory
+		- who, quote
+			I'm {name}.
+			That's what they tell me anyway.
+	as snowy
+		- who, quote
+			I'm {name}.
+			I like frozen bananas.
+			But frozen hares are cool too.
+	as snowflake
+		- who, quote
+			I'm {name}.
+			I don't mind hot days.
+			I like a challenge.
+	as soggy
+		- who, quote
+			I'm {name}.
+			I bathe every day.
+			It keeps my skin moist.
+	as soppy
+		- who, quote
+			I'm {name}.
+			Did you know you can grab my bomb before it goes off?
+	as sylvester
+		- who, quote
+			I'm {name}.
+			I like meeting up in dark, smoke-filled rooms.
+			It makes me feel like I'm in a detective movie.
+	as umbra
+		match nth-talk
+		as 0
+			- who, quote
+				I'm {name}.
+				The slug who always gets you if you don't have a flashlight.
+			-- if game.has-talked-to-slug[shadow] != 0
+				- player "{shadow} said that too."
+				- who, "It was a team effort."
+			else
+				- player "Now I know."
+		else
+			- player quote
+				Even with a flashlight, it's still pretty dark in here.
+				A slug could be around any corner.
+			- who, "We like it that way."
+	as wendy
+		- who, quote
+			I'm {name}.
+			I'm the only slug in the basement who drops sleep bombs.
+			That's my own unique contribution.
+	as wooly
+		- who, quote
+			I'm {name}.
+			I wonder if sheep dream about me?
+	as wormy
+		- who, quote
+			I'm {name}.
+			After you throw a bomb, it takes a turn before it goes off.
+			During that time, it blocks slugs!
+	as zanzibar
+		- who, quote
+			I'm {name}.
+			I'm considered a bit of a fancy pants.
+			But I use phrases like "fancy pants".
+
+slug-condition-dialog dialog-entry[](slug slug, condition smoke-kind)
+	match condition
+	as perfume
+		- who: slug.slug-dizzy, content: "So stinky!"
+	as plain
+		- who: slug.slug-dizzy, content: "I can't see anything!"
+	as sleep
+		# We have {player-wakes-up-slug} instead
+		- who: slug.slug-dizzy, content: "This message should not appear"
+	as pepper
+		- who: slug.slug-dizzy, content: "So spicy!"
+
+slug-dizzy-dialog dialog-entry[](slug slug)
+	- slug.slug-dizzy, "Whoa…"
+slug-frozen-dialog dialog-entry[](slug slug)
+	- slug.slug-frozen, "…"
+player-wakes-up-slug dialog-entry[](slug slug)
+	-- unless looks-like-cookie slug
+		- player "Wake up…"
+	- slug.slug-waking-up, "Huh?"
+	- slug.slug-wow, "BUNNY!"
+player-fails-to-wake-up-slug dialog-entry[](slug slug)
+	- player "Wake up…"
+	- slug.slug-waking-up, "5 more minutes…"
+
+dark-basement-1 dialog-entry[]()
+	- player "It sure is dark in here…"
+dark-basement-2 dialog-entry[]()
+	- player "I should turn back…"
+dark-basement-3 dialog-entry[]()
+	- player "If I don't turn back now, something really bad is going to happen."
+
+use-napkin dialog-entry[](slug slug)
+	-
+		who: player-aah
+		content: "Aah!"
+		one-time-sound: lose
+	-
+		who: slug-normal slug
+		side: east
+		content: "Bye!"
+		one-time-sound: ()
+		post-effect: use-napkin slug
+		delay: ()
+	-
+		who: player
+		side: west
+		content: "Good thing I used this napkin."
+		one-time-sound: ()
+		post-effect: unpause-music
+		delay: ()
+
+lose-generic dialog-entry[]()
+	-
+		who: player-aah
+		side: west
+		content: "Aah!"
+		one-time-sound: lose
+		post-effect: lose
+		delay: ()
+	- after-lose-dialog "I must have blacked out…"
+lose-that-was-stupid dialog-entry[]()
+	-
+		who: player-aah
+		side: west
+		content: "Aah!"
+		one-time-sound: lose
+		post-effect: lose
+		delay: ()
+	- after-lose-dialog "That was stupid…"
+lose-dark-basement dialog-entry[]()
+	-
+		who: player-aah
+		side: west
+		content: "I just felt something slimy!"
+		one-time-sound: lose
+		post-effect: lose
+		delay: ()
+	- after-lose-dialog "I wonder what that could have been…"
+
+-after-lose-dialog dialog-entry(content string)
+	who: player
+	side: west
+	content: content
+	one-time-sound: ()
+	post-effect: unpause-music
+	delay: fade-to-black-time
+
+-player dialog-entry(content string)
+	who: player
+	content: content
+
+-slug dialog-entry(content string)
+	who: slug
+	content: content
+
+-multi dialog-entry[](who dialog-who, lines string[])
+	for line in lines
+		who: who
+		content: line
+
+dialog-for-equipment dialog-entry[](a equipment)
+	match a
+	as bag0
+		- player quote
+			An extra bag!
+			Now I can carry more items.
+	as bag1
+		- player quote
+			A new bag!
+			I can put some extra items in here.
+	as breadcrumbs
+		- player quote
+			I can use these breadcrumbs to track where I've been.
+	as compass
+		- player quote
+			Hey, this compass isn't pointing north …
+			It's pointing to treasure!
+			…and the little needle points to slugs.
+	as glove
+		- player quote
+			This glove should help me to throw things farther.
+	as monocle
+		- player quote
+			With this monocle I can see farther.
+
+got-flashlight-part dialog-entry[](a flashlight-part)
+	match a
+	as flashlight-shell
+		- player quote
+			An empty flashlight with no batteries or bulb.
+			I'll keep it in case one day this is a rare collectable worth thousands.
+	as flashlight-bulb
+		- player quote
+			Leaving a lightbulb sitting on the floor is dangerous.
+			I'll carry it with me.
+	as flashlight-battery
+		- player quote
+			I got some batteries.
+			I'll probably have a use for these one day.
+
+completed-flashlight dialog-entry[](has-seen-basement bool)
+	if has-seen-basement
+		- player quote
+			Finally, a usable flashlight!
+			Now I can make it through the basement without getting slugged!
+	else
+		- player quote
+			Finally, a usable flashlight!
+			Now to find the basement.
+			It's probably in the foyer somewhere.
+
+dialog-for-area dialog-entry[]?(a area)
+	match a
+	as backyard
+		- player "I'm in the backyard?"
+		- player "I could have just gone around the house…"
+	else
+		()
+
+dialog-for-item dialog-entry[]?(a basic-item)
+	match a
+	as cookie
+		()
+	as hare-plush
+		- player quote
+			It's … me?
+			I guess I should be flattered…
+			They'll chase this instead of the real me.
+	as ice-soda
+		- player quote
+			These ice sodas always give me brain freeze.
+			If I point it at a slug, maybe it will do the same?
+	as lemon
+		- player "I wonder if slugs like lemons?"
+	as napkin
+		- player "This napkin will come in handy if a slug gets me."
+	as perfume
+		- player quote
+			If I use this perfume, everyone will avoid me.
+			Speaking from experience.
+			Taking a shower will wash it off.
+	as pepper-bomb
+		- player quote
+			I can use this hot pepper bomb to drive slugs away.
+			Of course, it works on me too…
+	as sleep-bomb
+		- player quote
+			Oh, a sleep bomb. I used to use these.
+			Now I've kicked my caffeine addiction
+			and no longer need to bomb myself to sleep.
+	as smoke-bomb
+		-- multi player,
+			- quote
+				A smoke bomb. If I hide in smoke, slugs won't see me.
+				Of course, I can't see see slugs hiding in smoke either.
+			- quote
+				I can use bombs the same way as cookies.
+				…except for eating them obviously.
+			- quote
+				I meant I can press the C key to open item selection
+				and Space to select the item.
+	as soap
+		- player "I could use this soap to slow down a pursuing slug."
+	as soda
+		-- multi player,
+			- quote
+				If I were to shake this soda and point it at a slug,
+				it just might…
+			- "Wait, am I really that devious?"
+			- "Yes I am!"
+	as sparkler
+		- player "I could use this sparkler to light up an area for a short time."
+
+harley-initial-dialog dialog-entry[](a game)
+	slugless-run = a.persistent-state.times-slugged == 0
+	- player "Hi!"
+	- harley, "Aah!"
+	- player "Do you have any waffles?"
+	- harley, quote
+		You weren't supposed to get this far!
+		How did you get past the slugs?
+	- if slugless-run
+		player "I got good."
+	else
+		player "I didn't always… but I kept trying!"
+	- harley, "Listen… there are no waffles."
+	- player "But the flyer said there would be free waffles!"
+	- harley, quote
+		That was a ruse.
+		I told the slugs hares would come for free hugs.
+		Then I set up cameras everywhere.
+	- harley, quote
+		I've been streaming it online.
+		It's super popular.
+	- if slugless-run
+		harley, quote
+			But you… you didn't get caught even once!
+	else
+		harley, quote
+			You're particularly popular.
+			The way you scream is just so adorable.
+	- player "If you promise people waffles, you should give them waffles!"
+	- harley, quote
+		What are you going to do?
+		I'm the queen of the slugs!
+	- slug "Wait, we have a queen?"
+	- slug "I don't remember voting for you."
+	- player quote
+		I'm so mad, I…
+		Say, have you ever been slugged?
+	- harley, "…!"
+	- player quote
+		Forget everything.
+		I can touch slugs now.
+		I'm gonna throw slugs at you!
+	-
+		who: harley
+		content: "Eek!"
+		post-effect: chase
+
+harley-running-dialog dialog-entry[](nth nat)
+	match nth
+	as 0
+		- harley, "You can't catch me!"
+	as 1
+		- harley, "Getting tired yet?"
+	as 2
+		- player, "Working hard or Harley working?"
+		- harley, "Harley har har."
+	else
+		- harley, quote
+			I can jump up to 2 spaces!
+			Unless you place something in the way…
+
+you-win dialog-entry[]()
+	-
+		who: harley-aah
+		content: "Aah!"
+		one-time-sound: lose
+	- harley, quote
+		It's icky!
+		It's sticky!
+		It's…
+	-
+		who: harley
+		content: "Not that big of a deal."
+		post-effect: credits
+	- player, quote
+		Yeah, you get used to it.
+	- slug, quote
+		We have flour in the kitchen.
+		Wanna make some waffles?
+	- player, "Yeah, OK."
+	-
+		who: harley
+		content: "I'll make some toppings."
+		post-effect: the-end
+
+-slug-normal dialog-who(a slug)
+	if is-big a
+		if is-ice a
+			big-ice-slug
+		else
+			big-slug
+	elif is-bull a
+		bull-slug
+	elif is-ice a
+		ice-slug
+	elif is-soda a
+		soda-slug
+	elif looks-like-cookie a
+		cookie-slug
+	else
+		slug
+-slug-dizzy dialog-who(a slug)
+	if is-big a
+		if is-ice a
+			big-ice-slug-dizzy
+		else
+			big-slug-dizzy
+	elif is-bull a
+		bull-slug-dizzy
+	elif is-ice a
+		ice-slug-dizzy
+	elif is-soda a
+		soda-slug
+	elif looks-like-cookie a
+		cookie-slug-dizzy
+	else
+		slug-dizzy
+-slug-frozen dialog-who(a slug)
+	if is-big a
+		big-slug-frozen
+	elif is-bull a
+		bull-slug-frozen
+	elif is-soda a
+		soda-slug-frozen
+	elif looks-like-cookie a
+		cookie-slug-frozen
+	else
+		slug-frozen
+-slug-waking-up dialog-who(a slug)
+	if is-big a
+		if is-ice a
+			big-ice-slug-waking-up
+		else
+			big-slug-waking-up
+	elif is-bull a
+		bull-slug-waking-up
+	elif is-ice a
+		ice-slug-waking-up
+	elif is-soda a
+		soda-slug-waking-up
+	elif looks-like-cookie a
+		cookie-slug-waking-up
+	else
+		slug-waking-up
+-slug-wow dialog-who(a slug)
+	if is-big a
+		if is-ice a
+			big-ice-slug-wow
+		else
+			big-slug-wow
+	elif is-bull a
+		bull-slug-wow
+	elif is-ice a
+		ice-slug-wow
+	elif is-soda a
+		soda-slug-wow
+	elif looks-like-cookie a
+		cookie-slug-wow
+	else
+		slug-wow

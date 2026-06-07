@@ -1,0 +1,58 @@
+import
+	grid/geometry
+	grid/grid-set
+	keen/random/random
+	keen/random/sfc
+	../../game/maze
+
+test
+	the random = sfc32 3
+	show make-square-maze 5 is quote
+		0, 0 to 5, 5
+		┌─────┐
+		│    •│
+		│ ••••│
+		│••  •│
+		│    •│
+		│•••••│
+		└─────┘
+
+test
+	the random = sfc32 3
+	show make-square-maze 10 is quote
+		0, 0 to 10, 10
+		┌──────────┐
+		│       •••│
+		│  •    • •│
+		│ ••   ••••│
+		│ •  •••  •│
+		│ ••••    •│
+		│ • •     •│
+		│••••• ••••│
+		│•   •••  •│
+		│    • •  •│
+		│•••••••  •│
+		└──────────┘
+
+test
+	# It's not actually impossible to produce a square, but rare
+	squares mut nat = 0
+	for i in 100::nat
+		maze = make-maze-from-seed i
+		for pos in all-positions maze.bounds
+			rect grid-rect = bottom-left: pos, size: (2, 2)
+			if every rect.all-positions, maze[it]
+				squares +:= 1
+	squares is 4
+
+-make-maze-from-seed grid-set(seed nat32)
+	the random = sfc32 seed
+	make-square-maze 8
+
+-make-square-maze grid-set(n int16) random
+	maze-tiles grid-rect = bottom-left: (0, 0), top-right: (n, n)
+	required-points grid-set = (0, -1), (n - 1, n)
+	config maze-config =
+		fraction-fill-dead-ends: 0.4
+		fraction-fill-connections: 0.5
+	make-maze maze-tiles.to, required-points, config
