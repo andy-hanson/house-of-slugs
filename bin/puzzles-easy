@@ -1,0 +1,3542 @@
+backyard:
+	farthest:
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						 CEGF
+						CC FF
+						C  HH
+						B D I
+						AA
+			steps: 34
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						   EE
+						B CG
+						BBDGI
+						
+						AA FH
+			steps: 34
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						 DD G
+						CCCCG
+						BB
+						A E H
+						   FF
+			steps: 36
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						BDGKK
+						  HH
+						AEE J
+						 CFIJ
+						   JJ
+			steps: 36
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						ADD J
+						DD G
+						CCE I
+						   FF
+						B  HH
+			steps: 36
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						CCCFI
+						BB  I
+						AB  H
+						A DEG
+						A
+			steps: 38
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						 BGKK
+						 EHHH
+						A  JH
+						 DFI
+						 C I
+			steps: 38
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						   EI
+						A EE
+						DD
+						C  FH
+						B  FG
+			steps: 38
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						ADDD
+						A  HH
+						B  FF
+						  EE
+						 C GG
+			steps: 38
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						 DD H
+						  CFG
+						A C
+						AAEE
+						 B E
+			steps: 38
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						CEEE
+						CEGGI
+						   F
+						BD FH
+						A
+			steps: 40
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						 BEHH
+						 B  H
+						ABDG
+						A DF
+						AC  I
+			steps: 40
+basement:
+	beginning:
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						 CC
+						BB
+						AAD
+						A
+			steps: 6
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 5
+						B D
+						BB
+						AAC
+			steps: 6
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 5
+						ABD
+						AB
+						AAC
+			steps: 6
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 5
+						AAD
+						 BC
+						 B
+			steps: 6
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						AAD
+						 B
+						 CC
+						  C
+			steps: 6
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						 F
+						CE
+						BDG
+						A
+			steps: 7
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						C F
+						DD
+						BE
+						A
+			steps: 7
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						CCF
+						BCE
+						BD
+						A
+			steps: 7
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						BCE
+						
+						 DD
+						A
+			steps: 7
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						BBF
+						BD
+						BCE
+						A
+			steps: 7
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						CCF
+						B
+						ADE
+						A
+			steps: 7
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						 CF
+						B E
+						A
+						A D
+			steps: 7
+	farthest:
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 8
+						AFF
+						AE
+						 CII
+						 CHH
+						B HJ
+						BDG
+						  G
+			steps: 16
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 8
+						 GGG
+						 EIL
+						BFF
+						  H N
+						A  KM
+						 D K
+						 C J
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 8
+						 EFI
+						 EEH
+						 DDH
+						 D  J
+						AB G
+						  CG
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 8
+						 CFG
+						 CEG
+						AA
+						ADDHH
+						  DH
+						 B
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 8
+						   D
+						   D
+						 CCC
+						AAAF
+						 BB G
+						
+						   E
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 8
+						 C
+						BB
+						
+						 DD
+						  E
+						AA
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 8
+						 DDE
+						  DE
+						ABEE
+						A  F
+						ACCFG
+						 C
+			steps: 18
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 3, 8
+						B G
+						 E
+						A F
+						DD H
+						DCHH
+						 C
+			steps: 18
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 8
+						 GG
+						 FGG
+						C JMO
+						B IMM
+						AE  N
+						  HL
+						 D K
+			steps: 19
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 8
+						 HH
+						 HKK
+						BGJ N
+						BF  M
+						AE L
+						 DI
+						 C
+			steps: 19
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 8
+						 FJ
+						 FI
+						BFIKL
+						AE K
+						ADH
+						 DG
+						 C
+			steps: 19
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 8
+						 EGG
+						 DG
+						  GHJ
+						AC
+						 C FI
+						  FF
+						 B
+			steps: 19
+	midway-left:
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 4, 6
+						A  FHI
+						A D HH
+						ABCG
+						   E
+			steps: 15
+		-
+			puzzle:
+				blocks:
+					quote
+						-4, 2 to 4, 6
+						AB EHJ
+						  CG IKK
+						   FF
+						   D
+			steps: 16
+		-
+			puzzle:
+				blocks:
+					quote
+						-4, 2 to 4, 6
+						AB  EIII
+						  C GHH
+						   DGG
+						     F
+			steps: 16
+		-
+			puzzle:
+				blocks:
+					quote
+						-4, 2 to 4, 6
+						A   FFH
+						     GHH
+						  BD
+						   CE
+			steps: 16
+		-
+			puzzle:
+				blocks:
+					quote
+						-3, 2 to 5, 6
+						AA EEGHI
+						    EHH
+						 BCDD
+						    F
+			steps: 16
+		-
+			puzzle:
+				blocks:
+					quote
+						-4, 2 to 4, 6
+						A    IIK
+						 B E HJ
+						  CD G
+						    F
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-4, 3 to 5, 6
+						A  C GHII
+						 BB EE I
+						  BD F
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-4, 2 to 4, 6
+						A    F
+						  BDD GG
+						   C
+						    E
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-3, 2 to 5, 6
+						A  EE GG
+						A C EEF
+						   D
+						  B
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-3, 3 to 5, 6
+						AC E  II
+						AA FG
+						 BDFGH
+			steps: 17
+		-
+			puzzle:
+				blocks:
+					quote
+						-3, 2 to 4, 6
+						BDDGG J
+						A E  I
+						  CF
+						  C H
+			steps: 18
+		-
+			puzzle:
+				blocks:
+					quote
+						-4, 2 to 4, 6
+						A C E II
+						 BBDDHH
+						      G
+						     F
+			steps: 19
+	midway-right:
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 6
+						BBD
+						AB E
+						A EE
+						  E
+						  C
+			steps: 11
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 3, 5
+						A D
+						 C
+						BBE
+			steps: 11
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 2, 6
+						  FF
+						CFF
+						BE G
+						A
+						 D
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 6
+						 D
+						  EE
+						 B  F
+						AC FF
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 6
+						  E
+						BEE H
+						AD FH
+						AC FG
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 2, 6
+						 CDD
+						 DDH
+						AB G
+						  EE
+						   F
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 6
+						 DE
+						AD FH
+						 C  G
+						BBB
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 6
+						 CCE
+						ACEEF
+						
+						 BDD
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 6
+						  B
+						  C H
+						AA EG
+						A  DF
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 6
+						 C
+						  E G
+						AA F
+						  DF
+						 B
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 3, 6
+						 BEE
+						  DDG
+						AA  F
+						 C  F
+			steps: 12
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						BBD
+						B E
+						A
+						  C
+						  C
+			steps: 12
+bathroom:
+	beginning:
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 3, 5
+						A
+						A
+						A
+						 B
+				fire:
+					quote
+						2, 3 to 4, 5
+						 •
+						•
+				flood:
+					quote
+						3, 2 to 4, 4
+						•
+						•
+			steps: 21
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 2 to 4, 5
+						BB
+						
+						AA
+				fire:
+					quote
+						1, 3 to 2, 5
+						•
+						•
+				flood:
+					quote
+						2, 3 to 3, 5
+						•
+						•
+			steps: 21
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 5
+						 B
+						A DE
+						A
+						  C
+				fire:
+					quote
+						1, 2 to 4, 3
+						• •
+				flood:
+					quote
+						1, 3 to 3, 5
+						 •
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 4, 5
+						 A C
+						AA
+						 B
+				fire:
+					quote
+						2, 2 to 4, 4
+						•
+						 •
+				flood:
+					quote
+						1, 4 to 4, 5
+						• •
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 4, 5
+						 BD
+						
+						 C
+						A
+				fire:
+					quote
+						1, 2 to 3, 3
+						••
+				flood:
+					quote
+						0, 2 to 2, 4
+						 •
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 3 to 4, 5
+						 BB
+						AA
+				fire:
+					quote
+						0, 1 to 3, 4
+						•
+						
+						  •
+				flood:
+					quote
+						2, 2 to 4, 3
+						••
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 4, 5
+						 BB
+						
+						 CC
+						A
+				fire:
+					quote
+						1, 3 to 2, 5
+						•
+						•
+				flood:
+					quote
+						1, 1 to 3, 2
+						••
+			steps: 23
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 4, 5
+						  DE
+						B  E
+						A C
+				fire:
+					quote
+						3, 2 to 4, 4
+						•
+						•
+				flood:
+					quote
+						2, 4 to 4, 5
+						••
+			steps: 24
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 4, 5
+						  CC
+						  B
+						AA
+				fire:
+					quote
+						1, 1 to 3, 2
+						••
+				flood:
+					quote
+						0, 3 to 2, 4
+						••
+			steps: 24
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 2 to 4, 5
+						  C
+						  B
+						A
+				fire:
+					quote
+						1, 3 to 4, 4
+						• •
+				flood:
+					quote
+						2, 2 to 3, 4
+						•
+						•
+			steps: 24
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 3, 5
+						 D
+						A
+						
+						BC
+				fire:
+					quote
+						1, 2 to 2, 4
+						•
+						•
+				flood:
+					quote
+						2, 3 to 4, 4
+						••
+			steps: 24
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 4, 5
+						A
+						 DD
+						 CD
+						 B
+				fire:
+					quote
+						0, 3 to 2, 4
+						••
+				flood:
+					quote
+						3, 3 to 4, 5
+						•
+						•
+			steps: 24
+	farthest:
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						BB G
+						  E
+						AA
+						A DD
+						 C F
+				fire:
+					quote
+						0, 4 to 5, 6
+						   ••
+						•
+				flood:
+					quote
+						0, 4 to 2, 6
+						••
+						 •
+			steps: 33
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						  DDG
+						   F
+						AB F
+						A CC
+						  EEE
+				fire:
+					quote
+						2, 1 to 4, 6
+						•
+						
+						
+						 •
+						 •
+				flood:
+					quote
+						3, 3 to 5, 5
+						••
+						 •
+			steps: 36
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						 BBFF
+						
+						   EG
+						AA
+						  CD
+				fire:
+					quote
+						0, 4 to 5, 6
+						•   •
+						•
+				flood:
+					quote
+						1, 4 to 3, 6
+						••
+						•
+			steps: 37
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						ABB E
+						A  DD
+						AA
+						    F
+						   C
+				fire:
+					quote
+						0, 2 to 2, 4
+						•
+						••
+				flood:
+					quote
+						0, 4 to 2, 6
+						••
+						•
+			steps: 37
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 5, 6
+						   EF
+						AAC
+						A   D
+						BBB D
+				fire:
+					quote
+						0, 2 to 2, 5
+						••
+						
+						•
+				flood:
+					quote
+						3, 1 to 5, 6
+						•
+						
+						
+						 •
+						 •
+			steps: 38
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						 BDEH
+						ABDDH
+						AB
+						    G
+						  CFF
+				fire:
+					quote
+						1, 1 to 3, 6
+						 •
+						
+						
+						•
+						•
+				flood:
+					quote
+						3, 2 to 5, 5
+						 •
+						
+						••
+			steps: 40
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						 CDE
+						BDDE
+						BD  H
+						A  G
+						   FF
+				fire:
+					quote
+						2, 2 to 4, 6
+						••
+						
+						
+						 •
+				flood:
+					quote
+						0, 1 to 3, 4
+						•
+						•
+						  •
+			steps: 41
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						BCEEG
+						BC E
+						 C EF
+						A
+						  DD
+				fire:
+					quote
+						0, 1 to 5, 6
+						•   •
+						
+						
+						
+						 •
+				flood:
+					quote
+						0, 1 to 5, 4
+						•
+						
+						   ••
+			steps: 41
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 5, 6
+						   E
+						A DE
+						  DD
+						 BBF
+						 CC
+				fire:
+					quote
+						1, 1 to 3, 3
+						•
+						••
+				flood:
+					quote
+						4, 1 to 5, 5
+						•
+						•
+						
+						•
+			steps: 41
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						B   H
+						 EEGG
+						AD
+						 CCC
+						   F
+				fire:
+					quote
+						0, 4 to 2, 6
+						••
+						 •
+				flood:
+					quote
+						0, 4 to 4, 6
+						  •
+						•  •
+			steps: 42
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 6
+						A   J
+						C DII
+						C  G
+						B  F
+						  E H
+				fire:
+					quote
+						3, 2 to 5, 5
+						••
+						
+						•
+				flood:
+					quote
+						2, 5 to 5, 6
+						•••
+			steps: 42
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 5, 6
+						A   F
+						 CCCF
+						   EF
+						 BDE
+				fire:
+					quote
+						0, 4 to 4, 6
+						  ••
+						•
+				flood:
+					quote
+						1, 4 to 5, 6
+						•
+						•  •
+			steps: 44
+	midway-left:
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 5
+						BBC
+						  C  E
+						 A   D
+						      F
+				fire:
+					quote
+						1, 1 to 7, 3
+						•   ••
+						     •
+				flood:
+					quote
+						0, 2 to 4, 4
+						• ••
+						   •
+			steps: 38
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 6
+						 C    G
+						     GG
+						BB D
+						 A   F
+						    E H
+				fire:
+					quote
+						0, 2 to 7, 6
+						•    ••
+						
+						
+						     •
+				flood:
+					quote
+						2, 2 to 7, 6
+						•
+						•
+						    •
+						    •
+			steps: 39
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 7, 6
+						B
+						 CC GI
+						A  EH
+						A D
+						    F
+				fire:
+					quote
+						0, 2 to 6, 6
+						     •
+						
+						•
+						••
+				flood:
+					quote
+						0, 2 to 7, 6
+						• •
+						  •
+						
+						      •
+			steps: 40
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 6
+						BB    H
+						
+						 DD  G
+						AC  FFJ
+						 C  E I
+				fire:
+					quote
+						3, 2 to 7, 6
+						   •
+						   •
+						•
+						•
+				flood:
+					quote
+						0, 1 to 6, 3
+						••
+						 •   •
+			steps: 41
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 7, 6
+						  B   E
+						     DD
+						      F
+						A  CC F
+				fire:
+					quote
+						1, 5 to 7, 6
+						••  ••
+				flood:
+					quote
+						4, 1 to 7, 3
+						•••
+						 •
+			steps: 41
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 6
+						      F
+						  C   F
+						ABC   F
+						 B   D
+						 B    E
+				fire:
+					quote
+						0, 2 to 7, 6
+						     ••
+						
+						
+						••
+				flood:
+					quote
+						3, 1 to 7, 5
+						   •
+						•
+						   •
+						   •
+			steps: 41
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 6
+						B    II
+						C E  I
+						   FF
+						AD    H
+						     G
+				fire:
+					quote
+						1, 1 to 7, 5
+						     •
+						
+						
+						•   ••
+				flood:
+					quote
+						0, 2 to 6, 5
+						 •
+						••
+						     •
+			steps: 42
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 7, 6
+						 C
+						 BE  GH
+						AD  GG
+						   F
+				fire:
+					quote
+						2, 3 to 6, 6
+						•
+						•
+						•  •
+				flood:
+					quote
+						5, 1 to 7, 4
+						 •
+						••
+						 •
+			steps: 42
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 6
+						A    GG
+						 B
+						 CC  F
+						 C
+						    DE
+				fire:
+					quote
+						3, 1 to 6, 6
+						  •
+						
+						
+						•
+						 ••
+				flood:
+					quote
+						4, 2 to 7, 4
+						 ••
+						••
+			steps: 42
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 7, 6
+						     E
+						    DE
+						     E
+						A  B E
+						   C
+				fire:
+					quote
+						0, 2 to 2, 5
+						••
+						•
+						•
+				flood:
+					quote
+						0, 3 to 4, 6
+						•
+						  •
+						  ••
+			steps: 42
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 6
+						      G
+						A    FF
+						 B  D F
+						   CC
+						      E
+				fire:
+					quote
+						4, 1 to 7, 4
+						  •
+						•
+						••
+				flood:
+					quote
+						0, 1 to 2, 6
+						•
+						
+						 •
+						 •
+						 •
+			steps: 43
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 7, 6
+						AC    I
+						  E  HH
+						 DDD H
+						    F
+						 B   G
+				fire:
+					quote
+						5, 1 to 7, 3
+						••
+						••
+				flood:
+					quote
+						2, 3 to 7, 5
+						•   •
+						••
+			steps: 44
+	midway-right:
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 3 to 5, 6
+						  B
+						A
+						A
+				fire:
+					quote
+						2, 2 to 4, 6
+						••
+						
+						
+						•
+				flood:
+					quote
+						1, 1 to 2, 3
+						•
+						•
+			steps: 21
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 5, 6
+						   D
+						BB D
+						
+						 C
+						A
+				fire:
+					quote
+						1, 1 to 5, 5
+						   •
+						
+						•
+						•
+				flood:
+					quote
+						2, 4 to 3, 6
+						•
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 5, 6
+						  CC
+						
+						 B
+						
+						A
+				fire:
+					quote
+						1, 2 to 3, 4
+						 •
+						••
+				flood:
+					quote
+						0, 3 to 5, 6
+						    •
+						
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						3, 5 to 5, 6
+						AA
+				fire:
+					quote
+						0, 2 to 4, 5
+						   •
+						 •
+						•
+				flood:
+					quote
+						1, 4 to 3, 5
+						••
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 3 to 5, 6
+						    B
+						    B
+						A
+				fire:
+					quote
+						1, 3 to 3, 5
+						 •
+						••
+				flood:
+					quote
+						3, 3 to 4, 6
+						•
+						
+						•
+			steps: 23
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 3 to 5, 5
+						BCC
+						AC
+				fire:
+					quote
+						1, 1 to 3, 3
+						••
+						•
+				flood:
+					quote
+						1, 3 to 4, 5
+						  •
+						•
+			steps: 24
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 4, 6
+						  D
+						
+						  CC
+						AB
+				fire:
+					quote
+						3, 4 to 5, 6
+						 •
+						••
+				flood:
+					quote
+						1, 3 to 4, 4
+						• •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 5, 6
+						  C D
+						  C
+						  B
+						A
+				fire:
+					quote
+						1, 1 to 4, 6
+						  •
+						  •
+						
+						
+						•
+				flood:
+					quote
+						1, 4 to 5, 5
+						•  •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 3 to 5, 6
+						 BB
+						BB
+						A
+				fire:
+					quote
+						1, 2 to 5, 6
+						   •
+						
+						 •
+						•
+				flood:
+					quote
+						0, 2 to 3, 6
+						  •
+						
+						
+						•
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 5, 6
+						  CDD
+						
+						A
+						 B
+				fire:
+					quote
+						0, 2 to 3, 5
+						  •
+						•
+						•
+				flood:
+					quote
+						3, 4 to 5, 5
+						••
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 5, 6
+						   D
+						 B  E
+						A
+						  C
+				fire:
+					quote
+						3, 3 to 5, 6
+						 •
+						 •
+						•
+				flood:
+					quote
+						2, 2 to 3, 4
+						•
+						•
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						3, 3 to 5, 6
+						 C
+						BC
+						A
+				fire:
+					quote
+						0, 2 to 2, 4
+						•
+						••
+				flood:
+					quote
+						1, 1 to 2, 2
+						•
+			steps: 27
+bedroom:
+	beginning:
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						BB
+						  C
+						  C
+						
+						A
+				pillows:
+					quote
+						-1, 2 to 2, 5
+						••
+						••
+						  •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						B E
+						BDE
+						 C
+						A
+						A
+				pillows:
+					quote
+						0, 1 to 2, 6
+						•
+						
+						 •
+						 •
+						 •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 1, 6
+						 C
+						BC
+						 D
+						A
+				pillows:
+					quote
+						-1, 2 to 2, 6
+						• •
+						  •
+						• •
+						 ••
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						B
+						 C
+						A D
+						  E
+						  E
+				pillows:
+					quote
+						-1, 1 to 2, 6
+						 ••
+						  •
+						 •
+						•
+						•
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						  F
+						 BE
+						A D
+						  C
+						  C
+				pillows:
+					quote
+						-1, 1 to 1, 6
+						••
+						•
+						 •
+						•
+						•
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 6
+						A E
+						A C
+						A
+						 BD
+				pillows:
+					quote
+						-1, 1 to 2, 6
+						 •
+						 •
+						  •
+						
+						• •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 3 to 2, 6
+						AB
+						  C
+						  C
+				pillows:
+					quote
+						-1, 1 to 2, 5
+						••
+						••
+						•••
+						•
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 2, 6
+						AD
+						
+						 C
+						 B
+				pillows:
+					quote
+						-1, 1 to 2, 5
+						•••
+						••
+						••
+						• •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 4 to 2, 6
+						AA
+						 B
+				pillows:
+					quote
+						-1, 1 to 2, 6
+						•
+						•
+						 ••
+						 ••
+						  •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 4 to 1, 6
+						 B
+						AA
+				pillows:
+					quote
+						-1, 1 to 2, 6
+						• •
+						  •
+						• •
+						•••
+						•
+			steps: 26
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						 CC
+						 B
+						 B
+						A
+						A
+				pillows:
+					quote
+						-1, 1 to 2, 6
+						•
+						• •
+						
+						  •
+						  •
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						BB
+						
+						A D
+						
+						  C
+				pillows:
+					quote
+						-1, 1 to 2, 6
+						  •
+						• •
+						 •
+						 ••
+						•
+			steps: 29
+	farthest:
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 4, 6
+						   D
+						  CC
+						
+						AAB
+				pillows:
+					quote
+						0, 1 to 4, 6
+						• •
+						••
+						••••
+						   •
+						 ••
+			steps: 44
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 4, 6
+						C
+						BDF
+						  F
+						A EE
+				pillows:
+					quote
+						0, 1 to 4, 6
+						 ••
+						   •
+						•• •
+						 •
+						 ••
+			steps: 46
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						BB G
+						  F
+						ADD
+						 C
+						  E
+				pillows:
+					quote
+						0, 1 to 4, 5
+						•• •
+						   •
+						• ••
+						 •
+			steps: 46
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						A D
+						
+						   F
+						BBBE
+						  C
+				pillows:
+					quote
+						1, 1 to 4, 6
+						  •
+						•
+						
+						
+						• •
+			steps: 46
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 4, 6
+						AADF
+						AC
+						BBB
+						   E
+				pillows:
+					quote
+						1, 1 to 4, 5
+						  •
+						  •
+						•
+						• •
+			steps: 46
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 2 to 4, 6
+						 CC
+						 B
+						A
+						AA
+				pillows:
+					quote
+						0, 1 to 4, 6
+						••
+						•  •
+						• ••
+						•  •
+						 •••
+			steps: 46
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						CEE
+						C FH
+						B  H
+						A G
+						 D
+				pillows:
+					quote
+						1, 2 to 4, 6
+						  •
+						•
+						 •
+						• •
+			steps: 48
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						 D G
+						B  G
+						A E
+						
+						 C F
+				pillows:
+					quote
+						0, 1 to 4, 6
+						•
+						 ••
+						 • •
+						••••
+						  •
+			steps: 48
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						AB F
+						BB
+						 D E
+						 C E
+						  EE
+				pillows:
+					quote
+						1, 1 to 4, 6
+						 •
+						  •
+						 •
+						
+						•
+			steps: 48
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						 C F
+						A  F
+						A D
+						A EE
+						 B
+				pillows:
+					quote
+						0, 2 to 2, 6
+						•
+						 •
+						 •
+						 •
+			steps: 50
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						 CCC
+						A D
+						  D
+						
+						 B
+				pillows:
+					quote
+						0, 1 to 4, 6
+						•
+						   •
+						   •
+						••••
+						  ••
+			steps: 50
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 2 to 4, 6
+						ADD
+						 B
+						 B
+						 C
+				pillows:
+					quote
+						0, 1 to 4, 6
+						•
+						•• •
+						•• •
+						 • •
+						 •••
+			steps: 52
+	midway-left:
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 2 to 5, 6
+						A
+						
+						
+						  B
+				pillows:
+					quote
+						1, 1 to 5, 6
+						   •
+						 •••
+						  •
+						•••
+						•• •
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						3, 2 to 5, 6
+						 B
+						
+						
+						A
+				pillows:
+					quote
+						1, 1 to 5, 6
+						 ••
+						 •••
+						  ••
+						•• •
+						••••
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 2 to 4, 6
+						BB
+						 C
+						 C
+						A
+				pillows:
+					quote
+						1, 1 to 5, 5
+						 • •
+						
+						•  •
+						•••
+			steps: 31
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 1 to 5, 6
+						A
+						
+						  B
+						  B
+						 BB
+				pillows:
+					quote
+						1, 1 to 5, 6
+						  ••
+						 •••
+						  •
+						••
+						••
+			steps: 31
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 5 to 4, 6
+						AA
+				pillows:
+					quote
+						1, 1 to 5, 6
+						   •
+						 •••
+						  ••
+						 ••
+						•  •
+			steps: 31
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 1 to 5, 6
+						A
+						
+						
+						  B
+						  B
+				pillows:
+					quote
+						1, 1 to 5, 6
+						  ••
+						 •••
+						  •
+						•••
+						•••
+			steps: 33
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 1 to 5, 5
+						  C
+						 B
+						
+						AA
+				pillows:
+					quote
+						2, 1 to 5, 6
+						• •
+						••
+						  •
+						•••
+						  •
+			steps: 33
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 1 to 5, 6
+						BBC
+						  C
+						
+						
+						AA
+				pillows:
+					quote
+						1, 1 to 5, 4
+						  ••
+						 •
+						•  •
+			steps: 36
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 2 to 5, 6
+						  D
+						 C
+						
+						AB
+				pillows:
+					quote
+						1, 1 to 5, 6
+						 ••
+						 • •
+						  ••
+						•
+						••••
+			steps: 37
+		-
+			puzzle:
+				blocks:
+					quote
+						3, 3 to 5, 4
+						AA
+				pillows:
+					quote
+						2, 1 to 5, 6
+						  •
+						• •
+						
+						 ••
+						•••
+			steps: 37
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 1 to 5, 6
+						  E
+						A E
+						 BD
+						
+						 CC
+				pillows:
+					quote
+						1, 1 to 5, 6
+						 ••
+						  •
+						
+						 •••
+						•
+			steps: 39
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 1 to 5, 6
+						 C
+						B
+						  E
+						
+						A D
+				pillows:
+					quote
+						1, 1 to 5, 6
+						 • •
+						  ••
+						
+						••••
+						• •
+			steps: 41
+	midway-right:
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 5
+						A D F
+						 CD
+						 B  E
+						 B
+				pillows:
+					quote
+						-2, 1 to 2, 4
+						   •
+						• ••
+						   •
+			steps: 28
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 1, 5
+						 D
+						B
+						AC
+						A
+				pillows:
+					quote
+						-2, 1 to 3, 5
+						•• ••
+						  ••
+						•  •
+						   •
+			steps: 28
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 2 to 1, 5
+						  B
+						  B
+						A C
+				pillows:
+					quote
+						-1, 1 to 3, 5
+						•  •
+						  •
+						• ••
+						• •
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 5
+						 BEF
+						  E
+						A D
+						  C
+				pillows:
+					quote
+						-2, 1 to 3, 5
+						••
+						 •
+						• • •
+						 •
+			steps: 30
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 3 to 2, 5
+						AAC
+						AB
+				pillows:
+					quote
+						-1, 1 to 3, 5
+						   •
+						  •
+						 ••
+						•
+			steps: 30
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 2, 5
+						AA
+						
+						B
+				pillows:
+					quote
+						-2, 1 to 3, 5
+						 •  •
+						 •••
+						•• ••
+						 •
+			steps: 30
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 3, 5
+						ADD
+						
+						B CC
+				pillows:
+					quote
+						-2, 1 to 1, 4
+						 •
+						• •
+						 •
+			steps: 31
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 5
+						ACC E
+						 C
+						  D
+						 B
+				pillows:
+					quote
+						-1, 1 to 3, 5
+						  •
+						 •
+						• ••
+						  •
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 5
+						ACC E
+						  C
+						    D
+						 B
+				pillows:
+					quote
+						-2, 1 to 2, 4
+						 • •
+						• ••
+						   •
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 5
+						A BB
+						   D
+						    E
+						   C
+				pillows:
+					quote
+						-2, 1 to 3, 5
+						 •  •
+						 ••
+						• •
+						 •
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 5
+						A
+						ABB
+						  C
+				pillows:
+					quote
+						-2, 1 to 3, 5
+						• •••
+						
+						 •  •
+						 •
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-2, 1 to 3, 5
+						BB EF
+						  CD
+						AA
+						 A
+				pillows:
+					quote
+						-1, 1 to 2, 4
+						•
+						 ••
+						  •
+			steps: 33
+foyer:
+	beginning:
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 4
+						AA
+						 AB
+						   C
+			steps: 13
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 3, 4
+						 CC
+						AB
+						  D
+			steps: 13
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 3, 4
+						ADD
+						 B
+						 C
+			steps: 13
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 3, 4
+						AA
+						 BB
+						  C
+			steps: 13
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 3, 4
+						BB
+						A
+						A
+			steps: 13
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 3, 4
+						BB
+						AA
+						 C
+			steps: 13
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 3, 4
+						AA
+						B
+						B
+			steps: 13
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 4
+						 BBB
+						
+						A C
+			steps: 15
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 4
+						  CC
+						   C
+						A B
+			steps: 15
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 4
+						  CC
+						   D
+						A BB
+			steps: 15
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 3, 4
+						 BD
+						A CE
+			steps: 15
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 3, 4
+						  CC
+						A B
+						  D
+			steps: 15
+	midway-middle:
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 8
+						BBF
+						 BF
+						 B
+						
+						A E
+						 CE
+						  D
+			steps: 30
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 8
+						CFI
+						  I
+						 EH
+						B G
+						 DG
+						 D
+						A
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 8
+						  I
+						CFI
+						 FI
+						B G
+						 E
+						AD
+						  H
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 7
+						CFF
+						  G
+						A E
+						 D
+						BB
+						B
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 7
+						BBG
+						BD
+						BAF
+						 A
+						 C
+						  E
+			steps: 32
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 8
+						 C
+						 CC
+						
+						
+						A E
+						ABD
+						A D
+			steps: 34
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 7
+						BDD
+						B E
+						BCE
+						BC
+						A
+			steps: 34
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 8
+						D H
+						 EE
+						C G
+						AB
+						 B
+						  F
+						  F
+			steps: 34
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 8
+						 DG
+						C
+						AFF
+						AFE
+						  E
+						 B
+			steps: 34
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 8
+						 BI
+						 E
+						AG
+						A F
+						 DH
+						 CC
+			steps: 36
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 8
+						AEE
+						 E
+						 BD
+						 DD
+						  G
+						 C
+						  F
+			steps: 36
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 8
+						 DD
+						 CC
+						B
+						B
+						B
+						  E
+						A E
+			steps: 38
+garden: empty-object
+kitchen:
+	beginning:
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 3
+						AAB
+						  B
+				fire:
+					quote
+						1, 1 to 2, 5
+						•
+						
+						
+						•
+			steps: 18
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 6
+						 AC
+						AAC
+						
+						  B
+				fire:
+					quote
+						-1, 1 to 2, 6
+						  •
+						
+						
+						
+						•
+			steps: 18
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						CC
+						B E
+						 AE
+						
+						  D
+				fire:
+					quote
+						1, 1 to 2, 4
+						•
+						
+						•
+			steps: 18
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						AB
+						AAD
+						
+						
+						  C
+				fire:
+					quote
+						-1, 3 to 1, 6
+						•
+						
+						 •
+			steps: 19
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						CDH
+						C G
+						 F
+						B E
+						A
+				fire:
+					quote
+						-1, 4 to 2, 6
+						  •
+						•
+			steps: 20
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						 CC
+						 BC
+						A C
+						  D
+						  D
+				fire:
+					quote
+						1, 3 to 2, 5
+						•
+						•
+			steps: 20
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 6
+						BB
+						  D
+						 C
+						AA
+				fire:
+					quote
+						-1, 3 to 0, 5
+						•
+						•
+			steps: 20
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 2 to 2, 6
+						BB
+						BC
+						AC
+						  D
+				fire:
+					quote
+						0, 3 to 1, 5
+						•
+						•
+			steps: 21
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 5
+						B
+						B
+						ACC
+						A D
+				fire:
+					quote
+						-1, 1 to 0, 5
+						•
+						
+						
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 6
+						 BB
+						
+						A
+						  C
+						  C
+				fire:
+					quote
+						-1, 3 to 1, 5
+						 •
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 1 to 2, 4
+						AAC
+						A
+						A B
+				fire:
+					quote
+						0, 3 to 1, 5
+						•
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						-1, 3 to 2, 6
+						AA
+						A
+						  B
+				fire:
+					quote
+						1, 3 to 2, 6
+						•
+						
+						•
+			steps: 22
+	farthest:
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						    E
+						  B E
+						AABCD
+						   CD
+				fire:
+					quote
+						2, 3 to 5, 5
+						•
+						  •
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						 AEE
+						AADDG
+						 B
+						  CCF
+				fire:
+					quote
+						4, 1 to 5, 3
+						•
+						•
+			steps: 25
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						 B E
+						   EE
+						AC D
+						  DDF
+				fire:
+					quote
+						1, 2 to 3, 3
+						••
+			steps: 26
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						    G
+						 B EG
+						ABDE
+						 CC F
+				fire:
+					quote
+						0, 1 to 5, 3
+						•
+						  • •
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 5, 5
+						BBCEG
+						 B
+						AA DF
+				fire:
+					quote
+						0, 2 to 5, 4
+						•
+						    •
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						 B
+						  ADD
+						AAA F
+						 C E
+				fire:
+					quote
+						0, 3 to 5, 5
+						•
+						    •
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						ACFFF
+						 B
+						 BDEE
+						   GG
+				fire:
+					quote
+						2, 3 to 4, 5
+						 •
+						•
+			steps: 28
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						   BD
+						
+						AAAC
+						  A
+				fire:
+					quote
+						2, 1 to 4, 4
+						 •
+						
+						•
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 5, 5
+						B  E
+						 CDE
+						AADD
+						 A D
+				fire:
+					quote
+						1, 1 to 4, 3
+						  •
+						•
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						 BB G
+						  BF
+						ACD
+						    E
+				fire:
+					quote
+						1, 2 to 4, 4
+						•
+						  •
+			steps: 30
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						B
+						AA E
+						ACC F
+						  DDD
+				fire:
+					quote
+						1, 2 to 4, 4
+						••
+						  •
+			steps: 31
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 5, 5
+						 BBF
+						 BD G
+						A CEG
+						  EE
+				fire:
+					quote
+						0, 4 to 3, 5
+						• •
+			steps: 32
+	midway-left:
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 5
+						 B
+						 B
+						A  D
+						 CCC
+				fire:
+					quote
+						2, 1 to 4, 6
+						 •
+						
+						
+						
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 7
+						   G
+						
+						   F
+						ABE
+						A D
+						  CC
+				fire:
+					quote
+						1, 1 to 3, 4
+						•
+						
+						 •
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						  D
+						 B
+						AA
+						   E
+						  C
+				fire:
+					quote
+						2, 3 to 4, 4
+						••
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 4, 7
+						  E
+						  E
+						 DD
+						BBD
+						A
+						 CC
+				fire:
+					quote
+						0, 3 to 3, 5
+						  •
+						•
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 2 to 4, 6
+						 DD
+						
+						 CC
+						A B
+				fire:
+					quote
+						1, 2 to 3, 5
+						•
+						
+						 •
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 4, 7
+						  E
+						  D
+						ABD
+						A
+						
+						 C
+				fire:
+					quote
+						0, 1 to 3, 3
+						•
+						  •
+			steps: 22
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						  DD
+						  CD
+						  C
+						AA
+						  B
+				fire:
+					quote
+						1, 1 to 3, 6
+						 •
+						
+						
+						
+						•
+			steps: 23
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 4, 7
+						  C
+						 CC
+						  D
+						 BB
+						
+						A
+				fire:
+					quote
+						1, 2 to 3, 4
+						 •
+						•
+			steps: 23
+		-
+			puzzle:
+				blocks:
+					quote
+						2, 2 to 4, 7
+						 C
+						CC
+						B
+						AD
+						A
+				fire:
+					quote
+						1, 1 to 4, 5
+						  •
+						
+						
+						•
+			steps: 23
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 4, 6
+						  DF
+						 ADE
+						AA
+						   C
+						  B
+				fire:
+					quote
+						0, 2 to 4, 4
+						•
+						   •
+			steps: 24
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 2 to 4, 6
+						 B
+						
+						A C
+						  C
+				fire:
+					quote
+						3, 2 to 4, 6
+						•
+						
+						
+						•
+			steps: 24
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 4, 6
+						  C
+						A C
+						A E
+						BBE
+						  D
+				fire:
+					quote
+						1, 3 to 4, 5
+						•
+						  •
+			steps: 24
+	midway-right:
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 6, 6
+						   BC
+						    CC
+						A
+						AA
+				fire:
+					quote
+						1, 2 to 5, 5
+						   •
+						
+						•
+			steps: 26
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 5, 6
+						  DDE
+						A   E
+						   C
+						 BB
+				fire:
+					quote
+						2, 1 to 4, 6
+						 •
+						
+						
+						
+						•
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 6, 6
+						 C  EE
+						AAAD F
+						
+						 B
+				fire:
+					quote
+						2, 1 to 3, 3
+						•
+						•
+			steps: 27
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 3 to 6, 6
+						 BB  D
+						A    D
+						AAC
+				fire:
+					quote
+						1, 2 to 3, 5
+						 •
+						
+						•
+			steps: 28
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 6, 6
+						 B   D
+						 B   D
+						 C
+						AC
+				fire:
+					quote
+						1, 1 to 3, 4
+						 •
+						
+						•
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 6, 6
+						 CC  E
+						  DDEE
+						A
+						A
+						 BB
+				fire:
+					quote
+						0, 2 to 5, 6
+						    •
+						
+						
+						•
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 6, 6
+						 BB  F
+						   EE
+						   D
+						AA
+						  C
+				fire:
+					quote
+						1, 3 to 6, 5
+						    •
+						•
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 6, 6
+						CC FF
+						B E
+						  E
+						AD
+						A
+				fire:
+					quote
+						1, 4 to 5, 6
+						   •
+						•
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 2 to 6, 6
+						BB CD
+						    D
+						
+						A
+				fire:
+					quote
+						0, 2 to 2, 4
+						 •
+						•
+			steps: 29
+		-
+			puzzle:
+				blocks:
+					quote
+						1, 1 to 6, 6
+						 DEGG
+						CDFFF
+						AA
+						
+						B
+				fire:
+					quote
+						2, 1 to 3, 4
+						•
+						
+						•
+			steps: 30
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 2 to 6, 6
+						  E
+						     F
+						BDDD
+						AC
+				fire:
+					quote
+						3, 3 to 5, 5
+						 •
+						•
+			steps: 31
+		-
+			puzzle:
+				blocks:
+					quote
+						0, 1 to 6, 6
+						  EE
+						ACC  F
+						A
+						 BD
+						  D
+				fire:
+					quote
+						2, 3 to 5, 6
+						• •
+						
+						•
+			steps: 31
